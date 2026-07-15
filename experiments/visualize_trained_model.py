@@ -80,7 +80,7 @@ def _find_dir(run_dir: Path, arg: Optional[Path], *subpaths: str) -> Optional[Pa
 
 def _load_oracle_leakiness(snr_dir: Path, dataset_id: str) -> Optional[np.ndarray]:
     try:
-        from leakage_localization.evaluation.oracle_agreement import OracleAgreement
+        from uncropped_transformers.evaluation.oracle_agreement import OracleAgreement
         return OracleAgreement(snr_dir, dataset_id).get_oracle_leakiness('attack')
     except Exception as e:
         print(f'  [skip wb-oracle] {e}')

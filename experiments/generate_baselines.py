@@ -18,7 +18,7 @@ import logging
 import numpy as np
 
 from init_things import *
-from leakage_localization.evaluation import OracleAgreement
+from uncropped_transformers.evaluation import OracleAgreement
 from utils.training_config import SupervisedTrainingConfig
 
 def main():

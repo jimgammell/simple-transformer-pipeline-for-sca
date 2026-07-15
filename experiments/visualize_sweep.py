@@ -9,9 +9,9 @@ import numpy as np
 from scipy.stats import spearmanr
 from matplotlib import pyplot as plt
 
-from leakage_localization.evaluation.mtd import compute_mtd
-from leakage_localization.evaluation.oracle_agreement import OracleAgreement
-from leakage_localization.datasets import DATASET
+from uncropped_transformers.evaluation.mtd import compute_mtd
+from uncropped_transformers.evaluation.oracle_agreement import OracleAgreement
+from uncropped_transformers.datasets import DATASET
 
 from init_things import *
 from utils.visualize_runs import *

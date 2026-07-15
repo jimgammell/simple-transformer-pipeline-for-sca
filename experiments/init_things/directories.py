@@ -3,7 +3,7 @@ import argparse
 from typing import Optional, Dict
 
 import yaml
-from leakage_localization.datasets import DATASET
+from uncropped_transformers.datasets import DATASET
 
 class _DuplicateKeyError(yaml.YAMLError):
     pass

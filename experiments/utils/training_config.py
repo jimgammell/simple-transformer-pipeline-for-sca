@@ -2,10 +2,10 @@ from typing import List, Optional, Dict, Any, Annotated, Literal
 
 from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
 
-from leakage_localization.datasets import DATASET
-from leakage_localization.training.supervised_lightning_module import PREPROCESSING, LEAKAGE_MODEL
-from leakage_localization.training.hyperparameter_tuning import ParamConfig
-from leakage_localization.models.model import GREY_BOX_HEAD, TRUNK, POSITION_EMBEDDING, POOLING, HEAD, FNN_STYLE
+from uncropped_transformers.datasets import DATASET
+from uncropped_transformers.training.supervised_lightning_module import PREPROCESSING, LEAKAGE_MODEL
+from uncropped_transformers.training.hyperparameter_tuning import ParamConfig
+from uncropped_transformers.models.model import GREY_BOX_HEAD, TRUNK, POSITION_EMBEDDING, POOLING, HEAD, FNN_STYLE
 
 
 class DataConfig(BaseModel):

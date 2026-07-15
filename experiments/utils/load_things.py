@@ -4,12 +4,12 @@ from pathlib import Path
 from torch.utils.data import DataLoader
 
 from init_things import directories as _dirs
-from leakage_localization.datasets import DATASET, PARTITION, Base_NumpyDataset, Base_TorchDataset
-from leakage_localization.training.supervised_lightning_module import SupervisedModule
+from uncropped_transformers.datasets import DATASET, PARTITION, Base_NumpyDataset, Base_TorchDataset
+from uncropped_transformers.training.supervised_lightning_module import SupervisedModule
 
 def load_numpy_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -> Base_NumpyDataset:
     if dataset_id == 'ascadv1-fixed':
-        from leakage_localization.datasets.ascadv1 import ASCADv1_NumpyDataset
+        from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
         dataset = ASCADv1_NumpyDataset(
             root=_dirs.ASCADV1_FIXED_ROOT,
             partition=partition_id,
@@ -19,7 +19,7 @@ def load_numpy_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             **kwargs
         )
     elif dataset_id == 'ascadv1-variable':
-        from leakage_localization.datasets.ascadv1 import ASCADv1_NumpyDataset
+        from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
         dataset = ASCADv1_NumpyDataset(
             root=_dirs.ASCADV1_VARIABLE_ROOT,
             partition=partition_id,
@@ -29,21 +29,21 @@ def load_numpy_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             **kwargs
         )
     elif dataset_id == 'ascadv2':
-        from leakage_localization.datasets.ascadv2 import ASCADv2_NumpyDataset
+        from uncropped_transformers.datasets.ascadv2 import ASCADv2_NumpyDataset
         dataset = ASCADv2_NumpyDataset(
             root=_dirs.ASCADV2_ROOT,
             partition=partition_id,
             **kwargs
         )
     elif dataset_id == 'ches-ctf-2018':
-        from leakage_localization.datasets.ches_ctf_2018 import CHESCTF2018_NumpyDataset
+        from uncropped_transformers.datasets.ches_ctf_2018 import CHESCTF2018_NumpyDataset
         dataset = CHESCTF2018_NumpyDataset(
             root=_dirs.CHES_CTF_2018_ROOT,
             partition=partition_id,
             **kwargs
         )
     elif dataset_id == 'dpav4d2':
-        from leakage_localization.datasets.dpav4_2 import DPAv4d2_NumpyDataset
+        from uncropped_transformers.datasets.dpav4_2 import DPAv4d2_NumpyDataset
         dataset = DPAv4d2_NumpyDataset(
             root=_dirs.DPAV4d2_ROOT,
             partition=partition_id,
@@ -55,7 +55,7 @@ def load_numpy_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
 
 def load_torch_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -> Base_TorchDataset:
     if dataset_id == 'ascadv1-fixed':
-        from leakage_localization.datasets.ascadv1 import ASCADv1_TorchDataset
+        from uncropped_transformers.datasets.ascadv1 import ASCADv1_TorchDataset
         dataset = ASCADv1_TorchDataset(
             root=_dirs.ASCADV1_FIXED_ROOT,
             partition=partition_id,
@@ -65,7 +65,7 @@ def load_torch_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             **kwargs
         )
     elif dataset_id == 'ascadv1-variable':
-        from leakage_localization.datasets.ascadv1 import ASCADv1_TorchDataset
+        from uncropped_transformers.datasets.ascadv1 import ASCADv1_TorchDataset
         dataset = ASCADv1_TorchDataset(
             root=_dirs.ASCADV1_VARIABLE_ROOT,
             partition=partition_id,
@@ -75,21 +75,21 @@ def load_torch_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             **kwargs
         )
     elif dataset_id == 'ascadv2':
-        from leakage_localization.datasets.ascadv2 import ASCADv2_TorchDataset
+        from uncropped_transformers.datasets.ascadv2 import ASCADv2_TorchDataset
         dataset = ASCADv2_TorchDataset(
             root=_dirs.ASCADV2_ROOT,
             partition=partition_id,
             **kwargs
         )
     elif dataset_id == 'ches-ctf-2018':
-        from leakage_localization.datasets.ches_ctf_2018 import CHESCTF2018_TorchDataset
+        from uncropped_transformers.datasets.ches_ctf_2018 import CHESCTF2018_TorchDataset
         dataset = CHESCTF2018_TorchDataset(
             root=_dirs.CHES_CTF_2018_ROOT,
             partition=partition_id,
             **kwargs
         )
     elif dataset_id == 'dpav4d2':
-        from leakage_localization.datasets.dpav4_2 import DPAv4d2_TorchDataset
+        from uncropped_transformers.datasets.dpav4_2 import DPAv4d2_TorchDataset
         dataset = DPAv4d2_TorchDataset(
             root=_dirs.DPAV4d2_ROOT,
             partition=partition_id,

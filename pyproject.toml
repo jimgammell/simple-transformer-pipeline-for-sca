@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "leakage-localization"
+name = "uncropped-transformers"
 version = "2026.0"
 dependencies = [
     "tqdm",
@@ -28,7 +28,7 @@ requires-python = ">=3.11"
 authors = [
     {name = "anonymous", email = "anonymous@gmail.com"}
 ]
-description = "Methods for localizing side-channel leakage of cryptographic sensitive variables."
+description = "Repository for training, hyperparameter tuning, and evaluation of transformers for full-key physical side-channel attacks on uncropped power/EM traces."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE", "CITATION.cff"]

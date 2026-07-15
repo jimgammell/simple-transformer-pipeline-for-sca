@@ -8,8 +8,8 @@ from matplotlib.axes import Axes
 import numpy as np
 from scipy.stats import spearmanr
 
-from leakage_localization.datasets import PARTITION
-from leakage_localization.datasets.ascadv1 import repr_target as ascadv1_repr_target
+from uncropped_transformers.datasets import PARTITION
+from uncropped_transformers.datasets.ascadv1 import repr_target as ascadv1_repr_target
 
 def add_dline(
         ax: Axes,

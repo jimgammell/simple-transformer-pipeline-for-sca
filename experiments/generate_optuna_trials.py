@@ -25,7 +25,7 @@ import yaml
 
 from init_things import *
 from utils.training_config import SupervisedTrainingConfig
-from leakage_localization.training.hyperparameter_tuning import (
+from uncropped_transformers.training.hyperparameter_tuning import (
     SamplerType,
     get_study,
     generate_qmc_trials,

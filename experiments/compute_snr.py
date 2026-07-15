@@ -5,8 +5,8 @@ import logging
 
 import numpy as np
 from matplotlib import pyplot as plt
-from leakage_localization.datasets import DATASET, PARTITION
-from leakage_localization.parametric.snr import compute_snr
+from uncropped_transformers.datasets import DATASET, PARTITION
+from uncropped_transformers.parametric.snr import compute_snr
 
 from init_things import *
 from utils.load_things import load_numpy_dataset

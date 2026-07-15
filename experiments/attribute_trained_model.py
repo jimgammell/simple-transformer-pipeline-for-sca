@@ -2,9 +2,9 @@ from typing import List, get_args
 import argparse
 
 from torch.utils.data import DataLoader
-from leakage_localization.training.supervised_lightning_module import SupervisedModule
-from leakage_localization.datasets import Base_TorchDataset
-from leakage_localization.deep_attribution.attributor import Attributor, ATTRIBUTION_METHOD
+from uncropped_transformers.training.supervised_lightning_module import SupervisedModule
+from uncropped_transformers.datasets import Base_TorchDataset
+from uncropped_transformers.deep_attribution.attributor import Attributor, ATTRIBUTION_METHOD
 
 from init_things import *
 from utils.training_config import SupervisedTrainingConfig

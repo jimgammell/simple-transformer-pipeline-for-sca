@@ -12,11 +12,11 @@ import numpy as np
 from torch.utils.data import Dataset, Subset
 import lightning
 import optuna
-from leakage_localization.datasets import Base_TorchDataset
-from leakage_localization.training import SupervisedModule
-from leakage_localization.training.train_supervised_model import train_supervised_model
-from leakage_localization.training.hyperparameter_tuning import SamplerType, PruningCallback, sample_hparams, get_study, generate_qmc_trials
-from leakage_localization.models import Model
+from uncropped_transformers.datasets import Base_TorchDataset
+from uncropped_transformers.training import SupervisedModule
+from uncropped_transformers.training.train_supervised_model import train_supervised_model
+from uncropped_transformers.training.hyperparameter_tuning import SamplerType, PruningCallback, sample_hparams, get_study, generate_qmc_trials
+from uncropped_transformers.models import Model
 
 from init_things import *
 from utils.load_things import load_torch_dataset, construct_loaders

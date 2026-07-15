@@ -17,7 +17,7 @@ import torch
 import yaml
 from torch.profiler import ProfilerActivity, profile
 
-from leakage_localization.models.model import Model
+from uncropped_transformers.models.model import Model
 from init_things import *
 
 sys.path.insert(0, str(Path(__file__).parent))

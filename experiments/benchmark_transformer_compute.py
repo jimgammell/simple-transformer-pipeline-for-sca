@@ -21,7 +21,7 @@ import numpy as np
 import torch
 from torch.profiler import ProfilerActivity, profile
 
-from leakage_localization.models.model import Model
+from uncropped_transformers.models.model import Model
 from init_things import *
 
 # ── Fixed benchmark parameters ────────────────────────────────────────────────

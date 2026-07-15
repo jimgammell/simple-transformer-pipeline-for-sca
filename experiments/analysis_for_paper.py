@@ -13,9 +13,9 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter, MultipleLocator
 from matplotlib.lines import Line2D
 import re
-from leakage_localization.datasets import DATASET, PARTITION
-from leakage_localization.training.parse_metrics import parse_metrics
-from leakage_localization.evaluation import OracleAgreement
+from uncropped_transformers.datasets import DATASET, PARTITION
+from uncropped_transformers.training.parse_metrics import parse_metrics
+from uncropped_transformers.evaluation import OracleAgreement
 
 from init_things import *
 from utils.visualize_runs import *
