@@ -1,3 +1,5 @@
+# A Simple Transformer Pipeline for Full-Key Side-Channel Attacks on Uncropped Datasets
+
 - Project can be installed by cloning to some directory, creating environment with Python 3.11, and typing `pip install -e .`.
 - `experiments` directory contains entrypoints and experiment-specific configuration/methods
   - `train_supervised_model.py` -- entrypoint for training models
