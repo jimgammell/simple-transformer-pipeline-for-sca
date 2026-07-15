@@ -68,7 +68,7 @@ ASCADv1_NumpyDataset(root='./datasets/ascadv1_fixed', partition='profile', varia
 ASCADv1_NumpyDataset(root='./datasets/ascadv1_fixed', partition='attack', variable_key=False)
 PY
 ```
-- ASCADv1 (variable key)
+- ASCADv1 (variable key); expected runtime: 40 min.
 ```bash
 python - <<'PY'
 from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
@@ -89,9 +89,65 @@ PY
 
 ## Usage instructions
 
-### Training models
+Entrypoints for running and evaluating experiments are stored in the `./experiments` directory. This directory also contains experiment-specific infrastructure such as random seed initialization, initial PyTorch/Matplotlib configuration, directory structure/initialization, and project-specific utility functions. Our results can be reproduced as follows:
 
-### Evaluating pretrained models
+### Configuration
+
+Trial configurations should be stored in `./config` as YAML files. We provide reference configurations for ASCADv1-fixed, ASCADv1-variable, and CHES-CTF-2018 which reproduce our reported results, and you may use these as templates to create new configuration files with modified settings. These config files encode the following (see comments in reference configurations for additional details):
+- Dataset configuration: e.g. targeted intermediate variable, preprocessing strategy, data augmentation, valset size
+- Training hyperparameters: e.g. total steps, batch size, optimizer + learning rate scheduler hyperparameters, model selection metric
+- Architecture hyperparameters: e.g. leakage model, depth/width/patch size, dropout rates, position embedding algorithm, sequence -> logits algorithm
+- Search space: which hyperparameters to tune, from which values/ranges, and under what density function
+
+### Training from scratch
+
+Models can be trained by running the following command, where `CONFIG_FILE` is replaced with the name of a config file in `./config` without the `.yaml` suffix, and `DEST` is a path to the directory where checkpoints and logs should be saved:
+```bash
+python experiments/train_supervised_model.py \
+    --config-file CONFIG_FILE \
+    --dest DEST
+```
+For example, use the following commands to reproduce the training runs with our reported results:
+- ASCADv1 (fixed key):
+```bash
+python experiments/train_supervised_model.py --config-file ascadv1_fixed --dest ./outputs/ascadv1_fixed/demo_run
+```
+- ASCADv1 (variable key):
+```bash
+python experiments/train_supervised_model.py --config-file ascadv1_variable --dest ./outputs/ascadv1_variable/demo_run
+```
+- CHES-CTF-2018:
+```bash
+python experiments/train_supervised_model.py --config-file ches_ctf_2018 --dest ./outputs/ches_ctf_2018/demo_run
+```
+This command will save the following files to `DEST`:
+- `best_{metric_name}.ckpt`: the checkpoint of the best model according to `{metric_name}` (validation rank by default).
+- `latest.ckpt`: the model checkpoint after the last epoch before training finished or was interrupted.
+- `metrics.csv`: logs of metrics recorded after every training epoch (e.g. train/val loss, rank).
+- `config.yaml`: a config file encoding settings/info for reproducibility -- e.g. hyperparameters (after loading the yaml and applying command-line overrides), the Git commit hash, random seed.
+- `hparams.yaml`: a config file used internally by PyTorch Lightning for saving/loading checkpoints.
+
+### Evaluating trained models on the attack set
+
+The following command will compute, cache, and display a trained model's full-key and per-byte cross-entropy loss, accuracy, MTD, and correct-key rank on the test set, where `CKPT_PATH` is a path to a trained model checkpoint:
+```bash
+python experiments/evaluate_trained_model \
+    --model-ckpt-path CKPT_PATH \
+    --metrics attack-performance
+```
+This command assumes the checkpoint is stored in an experiment directory produced by our training script, which contains a `config.yaml` file. It will save the following files to this directory:
+- `attack_metrics.npz`: a cache of the performance metrics computed on the attack set.
+
+### Plotting training curves
+
+The following command will visualize the logs of train/val loss, acc, rank over time, and cached attack performance metrics, where `RUN_DIR` is a path to an experiment directory produced by our training script:
+```bash
+python experiments/visualize_trained_model.py \
+    --run-dir RUN_DIR
+```
+This command assumes that the files `metrics.csv` and `attack_metrics.npz` exist and will save the following files to this directory:
+- `training_curves.pdf`: plots of the train/val loss, rank, accuracy vs. training steps.
+- `attack_performance.pdf`: a plot of correct-key rank vs. traces seen on the attack set, and a visualization of the per-byte MTD.
 
 ### Tuning hyperparameters
 

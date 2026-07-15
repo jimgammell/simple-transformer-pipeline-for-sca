@@ -381,11 +381,6 @@ def main():
     parser.add_argument('--run-dir', required=True, type=Path)
     parser.add_argument('--dest', type=Path, default=None,
                         help='Output directory. Defaults to --run-dir.')
-    parser.add_argument('--snr-dir', type=Path, default=None)
-    parser.add_argument('--baseline-dir', type=Path, default=None,
-                        help='Directory with random.npy / oracle.npy and their '
-                             'evaluation results.  Auto-detected if omitted.')
-    parser.add_argument('--methods', type=str, nargs='*', default=None)
     args = parser.parse_args()
 
     run_dir: Path = args.run_dir
@@ -393,31 +388,8 @@ def main():
     dest: Path = args.dest or run_dir
     dest.mkdir(parents=True, exist_ok=True)
 
-    methods = args.methods if args.methods is not None else _detect_attr_methods(run_dir)
-    print(f'Attribution methods: {methods}')
-
-    baseline_dir = _find_dir(run_dir, args.baseline_dir, 'baselines')
-    print(f'Baseline dir: {baseline_dir}')
-
-    snr_dir    = _find_dir(run_dir, args.snr_dir, 'snr')
-    dataset_id = _load_dataset_id(run_dir)
-    oracle_leakiness: Optional[np.ndarray] = None
-    if snr_dir is not None and dataset_id is not None:
-        oracle_leakiness = _load_oracle_leakiness(snr_dir, dataset_id)
-    else:
-        print(f'  [skip wb-oracle] snr_dir={snr_dir}, dataset_id={dataset_id}')
-
     gen_training_curves(run_dir, dest)
     gen_attack_performance(run_dir, dest)
-    gen_oracle_agreement(run_dir, dest, methods, baseline_dir)
-
-    for method in methods:
-        gen_leakiness(run_dir, dest, method)
-        gen_dnno_occl(run_dir, dest, method, baseline_dir)
-        gen_ta_mtd(run_dir, dest, method, baseline_dir)
-        if oracle_leakiness is not None:
-            gen_wb_scatterplots(run_dir, dest, method, oracle_leakiness)
-            gen_wb_comparison_grid(run_dir, dest, method, oracle_leakiness)
 
 
 if __name__ == '__main__':
