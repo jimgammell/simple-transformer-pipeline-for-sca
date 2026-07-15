@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "leakage-localization"
+version = "2026.0"
+dependencies = [
+    "tqdm",
+    "torch",
+    "numpy",
+    "matplotlib",
+    "scikit-learn",
+    "pyyaml",
+    "einops",
+    "h5py",
+    "numba",
+    "colorcet",
+    "rotary-embedding-torch",
+    "lightning",
+    "optuna",
+    "pandas",
+    "trsfile==0.3.2",
+    "captum",
+    "pydantic",
+]
+requires-python = ">=3.11"
+authors = [
+    {name = "anonymous", email = "anonymous@gmail.com"}
+]
+description = "Methods for localizing side-channel leakage of cryptographic sensitive variables."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "CITATION.cff"]
+
+[project.optional-dependencies]
+development = [
+    "ruff"
+]
