@@ -6,6 +6,14 @@ This repository enables training, hyperparameter tuning, and evaluation of trans
 
 ## Project overview
 
+### Minimum resource requirements
+
+| Dataset | VRAM (required) | RAM (recommended) |
+| --- | --- | --- |
+| ASCADv1 (fixed key) | 8.78GB | 16GB |
+| ASCADv1 (variable key) | 9.07GB | 96GB |
+| CHES-CTF-2018 | 4.20GB | 32GB |
+
 ## Installation
 
 This code was tested using Python 3.11.15. Follow the instructions below to install the project and its dependencies:
@@ -23,7 +31,7 @@ pip install -e .
 
 ### Downloading datasets
 
-You may download some or all of the following datasets, and extract them to the project directory as follows:
+You may download some or all of the following datasets by running the commands below from the project directory:
 - ASCADv1 (fixed key) ([link](https://github.com/ANSSI-FR/ASCAD/tree/master/ATMEGA_AES_v1/ATM_AES_v1_fixed_key))
 ```bash
 mkdir -p datasets/ascadv1_fixed
@@ -47,6 +55,34 @@ wget https://zenodo.org/records/3733418/files/PinataAcqTask2.3_10k_upload.trs
 wget https://zenodo.org/records/3733418/files/PinataAcqTask2.4_10k_upload.trs
 wget https://zenodo.org/records/3733418/files/PinataAcqTask2.5_1k_NK_upload.trs
 wget https://zenodo.org/records/3733418/files/PinataAcqTask2.6_1k_NK_upload.trs
+```
+
+### One-time dataset validation and preprocessing
+
+The first time a dataset is initialized, our code will run checksum validation, copy traces to a binary file to enable faster dataloading, and cache the per-feature mean and variance on the profiling set. We recommend running the following commands from the project directory to complete this step once before training with multiprocessing. 
+- ASCADv1 (fixed key); expected runtime: 30 sec.
+```bash
+python - <<'PY'
+from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
+ASCADv1_NumpyDataset(root='./datasets/ascadv1_fixed', partition='profile', variable_key=False).get_trace_statistics(use_progress_bar=True)
+ASCADv1_NumpyDataset(root='./datasets/ascadv1_fixed', partition='attack', variable_key=False)
+PY
+```
+- ASCADv1 (variable key)
+```bash
+python - <<'PY'
+from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
+ASCADv1_NumpyDataset(root='./datasets/ascadv1_variable', partition='profile', variable_key=True).get_trace_statistics(use_progress_bar=True)
+ASCADv1_NumpyDataset(root='./datasets/ascadv1_variable', partition='attack', variable_key=True)
+PY
+```
+- CHES-CTF-2018; expected runtime: 3 min.
+```bash
+python - <<'PY'
+from uncropped_transformers.datasets.ches_ctf_2018 import CHESCTF2018_NumpyDataset
+CHESCTF2018_NumpyDataset(root='./datasets/ches_ctf_2018', partition='profile').get_trace_statistics(use_progress_bar=True)
+CHESCTF2018_NumpyDataset(root='./datasets/ches_ctf_2018', partition='attack')
+PY
 ```
 
 ### Downloading pretrained models
