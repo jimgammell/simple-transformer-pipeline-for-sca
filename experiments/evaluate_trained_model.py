@@ -214,7 +214,10 @@ def main():
                     assert False
             logging.info(f'Stored metric {metric_id} for file `{path_to_eval}` at `{dest_path}`.')
         metric = np.load(dest_path)
-        logging.info(f'Metric {metric_id} for file `{path_to_eval}`: {metric if isinstance(metric, np.ndarray) else [(k, v.shape) for k, v in metric.items()]})')
+        for k, v in metric.items():
+            if k == 'rank_over_time':
+                continue
+            logging.info(f'{k} = {v}')
 
 if __name__ == '__main__':
     main()

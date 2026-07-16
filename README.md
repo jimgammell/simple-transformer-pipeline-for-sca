@@ -4,7 +4,7 @@ Anonymous artifact submission to OPTIMIST 2026.
 
 This repository enables training, hyperparameter tuning, and evaluation of transformers for full-key physical side-channel attacks on uncropped power/EM traces.
 
-## Project overview
+## Overview
 
 ### Resource requirements
 
@@ -89,7 +89,7 @@ PY
 
 ### Downloading pretrained models
 
-Pretrained models can be downloaded from [this](https://drive.google.com/file/d/11Xx1D3CkgxK8cUF2JDmEpG3Bhgd6R8Ow/view?usp=sharing) Google Drive link (for the non-anonymous repo I'll host the files on HuggingFace so they can be downloaded from the command line). Then move the downloaded zip file to the project directory and run
+Pretrained models can be downloaded (1.4GB) from [this](https://drive.google.com/file/d/11Xx1D3CkgxK8cUF2JDmEpG3Bhgd6R8Ow/view?usp=sharing) Google Drive link (for the non-anonymous repo I'll host the files on HuggingFace so they can be downloaded from the command line). Then move the downloaded zip file to the project directory and run
 ```bash
 unzip pretrained-models.zip
 ```
@@ -181,6 +181,14 @@ This command assumes that the files `metrics.csv` and `attack_metrics.npz` exist
 ## Additional results
 
 ### Full performance metrics
+
+| Dataset | Metric | Full key | Byte 0 | Byte 1 | Byte 2 | Byte 3 | Byte 4 | Byte 5 | Byte 6 | Byte 7 | Byte 8 | Byte 9 | Byte 10 | Byte 11 | Byte 12 | Byte 13 | Byte 14 | Byte 15 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| ASCADv1-fixed | Accuracy (%) | 90.450 | 100.000 | 100.000 | 99.856 | 99.809 | 99.854 | 99.912 | 99.774 | 99.905 | 98.072 | 99.450 | 98.900 | 99.856 | 98.916 | 95.771 | 99.869 | 98.216 |
+| ASCADv1-fixed | MTD | 1.114 | 1.000 | 1.000 | 1.004 | 1.004 | 1.001 | 1.001 | 1.000 | 1.000 | 1.022 | 1.010 | 1.012 | 1.002 | 1.011 | 1.055 | 1.004 | 1.023 |
+| ASCADv1-variable | Accuracy (%) | 98.454 | 99.998 | 99.999 | 99.971 | 99.642 | 99.986 | 99.979 | 99.989 | 99.908 | 99.781 | 99.994 | 99.821 | 99.997 | 99.753 | 99.852 | 99.954 | 99.811 |
+| ASCADv1-variable | MTD | 1.010 | 1.000 | 1.000 | 1.000 | 1.003 | 1.000 | 1.000 | 1.000 | 1.002 | 1.002 | 1.000 | 1.000 | 1.000 | 1.002 | 1.000 | 1.000 | 1.001 |
+| CHES-CTF-2018 | MTD | 23.385 | 12.011 | 11.671 | 10.980 | 10.900 | 11.136 | 11.532 | 11.234 | 11.343 | 11.574 | 11.386 | 11.605 | 11.648 | 11.338 | 11.193 | 11.701 | 10.894 |
 
 ### Computational cost and scaling behavior
 
