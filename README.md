@@ -200,6 +200,15 @@ This command assumes that the files `metrics.csv` and `attack_metrics.npz` exist
 
 ### Tuning hyperparameters
 
+Hyperparameter tuning is done from the same entrypoint as training by adding additional command line arguments. Run the following command, where `OPTUNA_STUDY_PATH` specifies where the hyperparameter tuning database will be stored (recommended: `DEST/study.log`), and OPTUNA_TOTAL_TRIALS specifies the number of trials to run. The hyperparameters to be tuned and their search spaces are specified in the config file.
+```bash
+python experiments/train_supervised_model.py \
+    --config-file CONFIG_FILE \
+    --dest DEST \
+    --optuna-study-path OPTUNA_STUDY_PATH \
+    --optuna-total-trials OPTUNA_TOTAL_TRIALS
+```
+
 ## Additional results
 
 ### Full performance metrics

@@ -1,63 +1,63 @@
-data:
-  id: ascadv1-variable
-  target_byte: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-  target_variable: subbytes
-  preprocessing: standardize
-  random_roll_scale: 0.
-  random_lpf_scale: 0.
-  val_prop: 0.2
-training:
-  total_steps: 58575
-  lr_warmup_frac: 0.05
-  lr_const_frac: 0.
-  batch_size: 256
-  base_lr: 0.0011
-  lr_decay_multiplier: 0.0016
-  weight_decay: 0.21
-  label_smoothing: 0.
-  mixup_alpha: 0.
-  additive_gaussian_noise: 0.
-  grad_clip_val: 1.
-  accumulate_grad_batches: 1
-  early_stop_metric: val/rank
-  early_stop_mode: min
-  seed: 0
-  compile: true
-  num_workers: 8
-mtd:
-  attack_count: 1000
-  traces_per_attack: 1000
-model:
-  grey_box_head: null
-  leakage_model: id
-  trunk: transformer
-  position_embedding: rope
-  pooling: token
-  head: tied
-  fnn_style: mlp
-  patch_size: 2500
-  use_fourier_embed: false
-  fourier_embed_num_bands: null
-  fourier_embed_sigma: null
-  embedding_dim: 512
-  expansion_factor: 4
-  trunk_blocks: 8
-  head_count: null
-  register_tokens: 0
-  input_dropout_rate: 0.36
-  input_droppatch_rate: 0.
-  hidden_dropout_rate: 0.023
-  use_bias: false
-  perceiver_latent_dim: null
-  perceiver_self_attn_per_cross_attn_blocks: null
-  perceiver_cross_attn_head_count: null
-search_space:
+data: # dataset configuration settings
+  id: ascadv1-variable # which dataset to train on
+  target_byte: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] # which bytes of the sensitive variable to target
+  target_variable: subbytes # which intermediate sensitive variable to target
+  preprocessing: standardize # how to preprocess traces -- standardize, normalize, etc.
+  random_roll_scale: 0. # amount of random jitter augmentation to apply to traces (0: disabled)
+  random_lpf_scale: 0. # amount of random low-pass filtering augmentation to apply to traces (0: disabled)
+  val_prop: 0.2 # fraction of profiling set to set aside for validation
+training: # training hyperparameters
+  total_steps: 58575 # total number of minibatches to train on
+  lr_warmup_frac: 0.05 # duration of linear learning rate warmup (fraction of total training steps)
+  lr_const_frac: 0. # duration of holding learning rate at peak value (fraction of total training steps)
+  batch_size: 256 # training minibatch size
+  base_lr: 0.0011 # AdamW learning rate (maximum value during schedule)
+  lr_decay_multiplier: 0.0016 # final learning rate after cosine annealing (fraction of base_lr)
+  weight_decay: 0.21 # AdamW weight decay applied to weights of dense and Conv1d layers
+  label_smoothing: 0. # label smoothing strength (0: disabled)
+  mixup_alpha: 0. # mixup strength (0: disabled)
+  additive_gaussian_noise: 0. # additive Gaussian noise data augmentation (0: disabled)
+  grad_clip_val: 1. # gradient norm clipping value
+  accumulate_grad_batches: 1 # by setting this above 1 you can simulate larger minibatches than you have VRAM for (google gradient accumulation). 1: disabled.
+  early_stop_metric: val/rank # metric according to which we select the best model
+  early_stop_mode: min # whether 'better' is higher or lower for this metric
+  seed: 0 # random seed for python, numpy, pytorch, lightning
+  compile: true # whether to enable torch.compile. Speeds up training at cost of slow first few minibatches. Recommended to enable unless you get errors, I think it needs a newer GPU.
+  num_workers: 8 # number of dataloader workers, set based on number of CPU cores
+mtd: # settings for the minimum traces to disclosure metric
+  attack_count: 1000 # number of attack set permutations to average over
+  traces_per_attack: 1000 # number of traces per attack
+model: # transformer architecture hyperparameters
+  grey_box_head: null # leave at null, other settings broken
+  leakage_model: id # which leakage model to use -- identity, bits, etc.
+  trunk: transformer # leave at transformer, other settings broken
+  position_embedding: rope # which position embedding algorithm to use, ROPE seems best
+  pooling: token # how to condense the transformer output sequence into per-byte logits, token seems best
+  head: tied # whether to have a shared to-logits projection or 1 projection per byte, shared seems fine
+  fnn_style: mlp # leave at mlp, other settings broken
+  patch_size: 2500 # when splitting trace into patches for transformer. patch_count=trace_length/patch_size, smaller patch size is more expensive.
+  use_fourier_embed: false # leave disabled, broken
+  fourier_embed_num_bands: null # leave disabled, broken
+  fourier_embed_sigma: null # leave disabled, broken
+  embedding_dim: 512 # transformer hidden dimension
+  expansion_factor: 4 # dimension expansion factor in the transformer MLP blocks
+  trunk_blocks: 8 # number of transformer layers
+  head_count: null # number of multiheaded self attention heads, leave null to auto-assign reasonable value
+  register_tokens: 0 # leave disabled, broken
+  input_dropout_rate: 0.36 # dropout rate applied directly to trace before feeding to transformer
+  input_droppatch_rate: 0. # leave disabled, incompatible with flash attention and makes training way slower
+  hidden_dropout_rate: 0.023 # dropout rate applied within transformer blocks
+  use_bias: false # whether to have biases on the linear projections of the transformer MLPs, etc. Unnecessary, the LayerNorms already have these. Most people disable.
+  perceiver_latent_dim: null # leave disabled, broken
+  perceiver_self_attn_per_cross_attn_blocks: null # leave disabled, broken
+  perceiver_cross_attn_head_count: null # leave disabled, broken
+search_space: # search spaces for hyperparameter tuning. The names/meanings/nesting here are the same as above, defining a variable here means it will be part of the search.
   training:
     base_lr:
-      type: float
-      low: 5.e-4
-      high: 5.e-3
-      log: true
+      type: float # data type of the variable
+      low: 5.e-4 # minimum value it can take on during search
+      high: 5.e-3 # maximum value it can take on during search
+      log: true # for random sampling, whether to sample uniformly in log space or linear space
     lr_decay_multiplier:
       type: float
       low: 1.e-4
