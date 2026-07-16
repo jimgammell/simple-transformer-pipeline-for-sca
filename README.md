@@ -217,13 +217,13 @@ The table below supplements the targeted comparisons in our manuscript with comp
 An important consideration for full-key attacks is that the per-byte performance does not fully determine the full-key performance, because the latter depends on the extent to which per-byte errors are correlated. We thus recommend future work report both full-key and per-byte performance.
 
  For example, let $A$ denote a model's full-key accuracy and $A_i$ denote its accuracy on byte $i$. Then we have
- $$
+ ```math
  1 - \sum_i (1 - A_i) \leq A \leq \min_i A_i.
- $$
+ ```
  For example, two bytes with 50% accuracy may be jointly predicted with 50% accuracy if their errors always occur on the same traces, 25% accuracy if their errors are uncorrelated, or 0% accuracy if their errors are fully disjoint. Similarly, if $M$ denotes the full-key MTD and $M_i$ denotes the MTD for byte $i$, we have
- $$
- M \geq \max_i M_i.
- $$
+```math
+M \geq \max_i M_i.
+```
  For example, a model with $M_1 = M_2 = 100$ might have $M = 100$ if errors are perfectly correlated across permutations, or $M = 125$ if $M_1 = 100$ for every permutation but $M_2 = 50$ for half of permutations and $150$ for the other half.
 
 ### Computational cost and scaling behavior
@@ -235,9 +235,9 @@ Below we visualize how the computational cost of our method scales with key tran
 There are 2 noteworthy takeaways:
 1. *Parameter count is an unreliable proxy for the computational cost of transformers.* As the patch count increases, FLOPs, peak VRAM, and wall-clock time increase, while the parameter count decreases. This is because smaller patches result in a smaller patch projection weight matrix, and the transformer block parameter counts do not depend on sequence length. We recommend future work report multiple complementary cost proxies rather than relying solely on parameter count: peak VRAM and wall-clock time are useful indicators of resource requirements to reproduce results in practice, FLOPs provides a hardware-agnostic measure of compute cost, and parameter count indicates storage space taken up by model weights and is useful for comparing models with similar architectures.
 2. *Cost scales approximately linearly with patch count in our regime.* For a transformer with $L$ layers, hidden dimension $D$, and sequence length $N$, a forward pass requires
-$$
+```math
 O(\underbrace{LN^2 D}_{\text{self-attention}} + \underbrace{LND^2}_{\text{MLPs and linear projections}})
-$$
+```
 FLOPs. This scaling behavior suggests that the $O(LND^2)$ term is dominant. While self-attention is often cited as expensive due to scaling quadratically with sequence length, for us its cost appears small compared to other components of the architecture. This is likely due to our large patch size which leads to relatively short sequence lengths, and our simple architecture which allows us to benefit from flash attention.
 
 ## Citation
