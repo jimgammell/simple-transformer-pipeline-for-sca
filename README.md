@@ -2,9 +2,31 @@
 
 Anonymous artifact submission to OPTIMIST 2026.
 
-This repository enables training, hyperparameter tuning, and evaluation of transformers for full-key physical side-channel attacks on uncropped power/EM traces.
+This repository provides a reproducible PyTorch pipeline for training, hyperparameter tuning, and evaluation of transformers for full-key profiled physical side-channel attacks on uncropped power and electromagnetic traces.
+
+**Intended users:** DLSCA researchers working on uncropped attacks who want pretrained models without doing costly training/hyperparameter tuning, a simple and performant backbone to extend, or a reproducible baseline for boilerplate transformer-based attacks.
 
 ## Overview
+
+This repository implements a deliberately simple transformer baseline for profiled physical side-channel attacks against cryptographic hardware which target uncropped traces without cropping or feature selection, and simultaneously predict all key bytes. We use the standard pre-norm transformer backbone that is common in other domains, adapting only the input and output layers to the side-channel setting. Our code is built on PyTorch, PyTorch Lightning, and Optuna.
+
+We support training, evaluation, and hyperparameter tuning on the uncropped variants of ASCADv1f, ASCADv1r, and CHES-CTF-2018 when targeting all bytes of the first SubBytes output. We provide both training recipes to reproduce our reported results, as well as pretrained models. We expect our code to be extensible to other settings as well.
+
+Our repository structure is summarized below. In `src/uncropped_transformers` we store pip-installable modular library code (e.g. neural nets, training methods, dataset wrappers, evaluation methods) designed to be imported into other projects. We store our project-specific code (e.g. entrypoints, PyTorch/Matplotlib configuration, directory creation) separately in the `experiments` directory.
+
+```
+.
+├── config                      # YAML config files for dataset, model, and training settings/hyperparameters.
+├── outputs                     # Directory for experiment outputs.
+├── datasets                    # Directory for dataset files and preprocessing caches.
+├── experiments                 # Entrypoints and infrastructure for experiments, and project-specific code.
+└── src                         # Reusable importable library code.
+    ├── uncropped_transformers
+    │   ├── datasets            # Dataset loading and preprocessing.
+    │   ├── evaluation          # Accuracy, rank, MTD metrics.
+    │   ├── models              # Neural net architectures and building blocks.
+    │   ├── training            # Training loops and hyperparameter tuning methods.
+```
 
 ### Resource requirements
 
@@ -182,6 +204,8 @@ This command assumes that the files `metrics.csv` and `attack_metrics.npz` exist
 
 ### Full performance metrics
 
+The table below supplements the targeted comparisons in our manuscript with complete per-byte and full-key results. 'Full key' denotes the accuracy or MTD when simultaneously preducting all bytes of the cryptographic key, and 'Byte $i$' denotes the accuracy or MTD for a single byte. MTD takes on non-integer values because we average it over 1k random permutations of the attack set.
+
 | Dataset | Metric | Full key | Byte 0 | Byte 1 | Byte 2 | Byte 3 | Byte 4 | Byte 5 | Byte 6 | Byte 7 | Byte 8 | Byte 9 | Byte 10 | Byte 11 | Byte 12 | Byte 13 | Byte 14 | Byte 15 |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | ASCADv1-fixed | Accuracy (%) | 90.450 | 100.000 | 100.000 | 99.856 | 99.809 | 99.854 | 99.912 | 99.774 | 99.905 | 98.072 | 99.450 | 98.900 | 99.856 | 98.916 | 95.771 | 99.869 | 98.216 |
@@ -190,7 +214,19 @@ This command assumes that the files `metrics.csv` and `attack_metrics.npz` exist
 | ASCADv1-variable | MTD | 1.010 | 1.000 | 1.000 | 1.000 | 1.003 | 1.000 | 1.000 | 1.000 | 1.002 | 1.002 | 1.000 | 1.000 | 1.000 | 1.002 | 1.000 | 1.000 | 1.001 |
 | CHES-CTF-2018 | MTD | 23.385 | 12.011 | 11.671 | 10.980 | 10.900 | 11.136 | 11.532 | 11.234 | 11.343 | 11.574 | 11.386 | 11.605 | 11.648 | 11.338 | 11.193 | 11.701 | 10.894 |
 
+An important consideration for full-key attacks is that the per-byte performance does not fully determine the full-key performance, because the latter depends on the extent to which per-byte errors are correlated. We thus recommend future work report both full-key and per-byte performance.
+
+ For example, let $A$ denote a model's full-key accuracy and $A_i$ denote its accuracy on byte $i$. Then we have $$1 - \sum_i (1 - A_i) \leq A \leq \min_i A_i.$$ For example, two bytes with 50% accuracy may be jointly predicted with 50% accuracy if their errors always occur on the same traces, 25% accuracy if their errors are uncorrelated, or 0% accuracy if their errors are fully disjoint. Similarly, if $M$ denotes the full-key MTD and $M_i$ denotes the MTD for byte $i$, we have $$M \geq \max_i M_i.$$For example, a model with $M_1 = M_2 = 100$ might have $M = 100$ if errors are perfectly correlated accross permutations, or $M = 125$ if $M_1 = 100$ for every permutation but $M_2 = 50$ for half of permutations and $150$ for the other half.
+
 ### Computational cost and scaling behavior
+
+Below we visualize how the computational cost of our method scales with key transformer architecture hyperparameters. We report the parameter count, floating point operations (FLOPs) per training step, peak VRAM usage during training, and wall clock time per step on our reference machine. We fix the minibatch size at 256. To avoid confounding due to filesystem speed, we generate random $2^{18}$-length traces directly in VRAM.
+
+![cost scaling plots](images_for_readme/cost_scaling.png)
+
+There are 2 noteworthy takeaways:
+1. *Parameter count is an unreliable proxy for the computational cost of transformers.* As the patch count increases, FLOPs, peak VRAM, and wall-clock time increase, while the parameter count decreases. This is because smaller patches result in a smaller patch projection weight matrix, and the transformer block parameter counts do not depend on sequence length. We recommend future work report multiple complementary cost proxies rather than relying solely on parameter count: peak VRAM and wall-clock time are useful indicators of resource requirements to reproduce results in practice, FLOPs provides a hardware/architecture-agnostic measure of compute cost, and parameter count indicates storage space taken up by model weights and is useful for comparing models with similar architectures.
+2. *Cost scales approximately linearly with patch count in our regime.* For a transformer with $L$ layers, hidden dimension $D$, and sequence length $N$, a forward pass requires$$O(\underbrace{LN^2 D}_{\text{self-attention}} + \underbrace{LND^2}_{\text{MLPs and linear projections}})$$ FLOPs. This scaling behavior suggests that the $O(LND^2)$ term is dominant. While self-attention is often cited as expensive due to scaling quadratically with sequence length, for us its cost appears negligible compared to other components of the architecture. This is likely due to our large patch size which leads to relatively short sequence lengths, and our simple architecture which allows us to benefit from flash attention.
 
 ## Citation
 
