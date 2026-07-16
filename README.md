@@ -6,13 +6,15 @@ This repository enables training, hyperparameter tuning, and evaluation of trans
 
 ## Project overview
 
-### Minimum resource requirements
+### Resource requirements
 
-| Dataset | VRAM (required) | RAM (recommended) |
-| --- | --- | --- |
-| ASCADv1 (fixed key) | 8.78GB | 16GB |
-| ASCADv1 (variable key) | 9.07GB | 96GB |
-| CHES-CTF-2018 | 4.20GB | 32GB |
+| Dataset | VRAM (required) | RAM (recommended) | Wall clock time |
+| --- | --- | --- | --- |
+| ASCADv1 (fixed key) | 8.78GB | 16GB | 3.34h |
+| ASCADv1 (variable key) | 9.07GB | 96GB | 2.80h |
+| CHES-CTF-2018 | 4.20GB | 32GB | 0.360h |
+
+Wall clock time is reported with our recommended training recipes on a machine with an NVIDIA A6000 GPU (49GB VRAM), AMD Ryzen Threadripper PRO 5965WX CPU, and 128GB of RAM. We recommend running on a machine with sufficient RAM for the OS to cache 1 copy of the dataset, as time to load traces from the filesystem is significant for uncropped datasets and may bottleneck performance.
 
 ## Installation
 
@@ -87,6 +89,31 @@ PY
 
 ### Downloading pretrained models
 
+Pretrained models can be downloaded from [this](https://drive.google.com/file/d/11Xx1D3CkgxK8cUF2JDmEpG3Bhgd6R8Ow/view?usp=sharing) Google Drive link (for the non-anonymous repo I'll host the files on HuggingFace so they can be downloaded from the command line). Then move the downloaded zip file to the project directory and run
+```bash
+unzip pretrained-models.zip
+```
+This will result in the following directory structure (the same as what would result from training + evaluating from scratch as described in the next section):
+```
+./outputs/
+├── ascadv1_fixed
+│   └── demo_run
+│       ├── best_val_rank.ckpt      # PyTorch Lightning checkpoint after the epoch with the best rank on valset
+│       ├── latest.ckpt             # PyTorch Lightning checkpoint after the final epoch
+│       ├── metrics.csv             # Log of train/val loss, rank, accuracy after each epoch
+│       ├── config.yaml             # Log listing settings for reproducibility: hyperparameters, seed, git commit hash, etc.
+│       ├── training_curves.pdf     # Plots of train/val loss, rank, accuracy vs. training step
+│       ├── attack_performance.pdf  # Plots of correct key model test rank vs. traces seen, per-byte MTD
+│       ├── attack_metrics.npz      # Cached performance metrics after evaluation of best model
+│       └── hparams.yaml            # Subset of config.yaml, used by Lightning for loading checkpoints
+├── ascadv1_variable
+│   └── demo_run
+│       ├── "
+└── ches_ctf_2018
+    └── demo_run
+        ├── "
+```
+
 ## Usage instructions
 
 Entrypoints for running and evaluating experiments are stored in the `./experiments` directory. This directory also contains experiment-specific infrastructure such as random seed initialization, initial PyTorch/Matplotlib configuration, directory structure/initialization, and project-specific utility functions. Our results can be reproduced as follows:
@@ -131,7 +158,7 @@ This command will save the following files to `DEST`:
 
 The following command will compute, cache, and display a trained model's full-key and per-byte cross-entropy loss, accuracy, MTD, and correct-key rank on the test set, where `CKPT_PATH` is a path to a trained model checkpoint:
 ```bash
-python experiments/evaluate_trained_model \
+python experiments/evaluate_trained_model.py \
     --model-ckpt-path CKPT_PATH \
     --metrics attack-performance
 ```
