@@ -1,6 +1,12 @@
 # A Simple Transformer Pipeline for Full-Key Side-Channel Attacks on Uncropped Datasets
 
-Anonymous artifact submission to OPTIMIST 2026.
+**Jimmy Gammell and Kaushik Roy**
+
+Purdue University
+
+[Paper (arXiv)](https://arxiv.org/abs/2608.30105) · [Pretrained models](#downloading-pretrained-models)
+
+*Presented at the OPTIMIST 2026 workshop*
 
 This repository provides a reproducible PyTorch pipeline for training, hyperparameter tuning, and evaluation of transformers for full-key profiled physical side-channel attacks on uncropped power and electromagnetic traces.
 
@@ -30,7 +36,7 @@ Our repository structure is summarized below. In `src/uncropped_transformers` we
 
 ### Resource requirements
 
-| Dataset | VRAM (required) | RAM (recommended) | Wall clock time |
+| Dataset | VRAM (measured peak) | RAM (recommended) | Wall clock time |
 | --- | --- | --- | --- |
 | ASCADv1 (fixed key) | 8.78GB | 16GB | 3.34h |
 | ASCADv1 (variable key) | 9.07GB | 96GB | 2.80h |
@@ -46,10 +52,10 @@ This code was tested using Python 3.11.15. Follow the instructions below to inst
 micromamba create --name uncropped-transformers python=3.11
 micromamba activate uncropped-transformers
 ```
-2. Clone the project, then install it alongside its dependencies (reviewers: download from anonymous github instead of cloning):
+2. Clone the project, then install it alongside its dependencies:
 ```bash
-git clone git@github.com:redacted-username/redacted-reponame
-cd redacted-reponame
+git clone https://github.com/jimgammell/simple-transformer-pipeline-for-sca.git
+cd simple-transformer-pipeline-for-sca
 pip install -e .
 ```
 
@@ -58,27 +64,33 @@ pip install -e .
 You may download some or all of the following datasets by running the commands below from the project directory:
 - ASCADv1 (fixed key) ([link](https://github.com/ANSSI-FR/ASCAD/tree/master/ATMEGA_AES_v1/ATM_AES_v1_fixed_key))
 ```bash
-mkdir -p datasets/ascadv1_fixed
-cd datasets/ascadv1_fixed
-wget https://www.data.gouv.fr/api/1/datasets/r/e7ab6f9e-79bf-431f-a5ed-faf0ebe9b08e -O ASCAD_data.zip
-unzip ASCAD_data.zip
+(
+    mkdir -p datasets/ascadv1_fixed
+    cd datasets/ascadv1_fixed
+    wget https://www.data.gouv.fr/api/1/datasets/r/e7ab6f9e-79bf-431f-a5ed-faf0ebe9b08e -O ASCAD_data.zip
+    unzip ASCAD_data.zip
+)
 ```
 - ASCADv1 (variable key) ([link](https://github.com/ANSSI-FR/ASCAD/tree/master/ATMEGA_AES_v1/ATM_AES_v1_variable_key))
 ```bash
-mkdir -p datasets/ascadv1_variable
-cd datasets/ascadv1_variable
-wget https://www.data.gouv.fr/api/1/datasets/r/3217dcc0-184f-402b-8914-e31cc120c51c -O atmega8515-raw-traces.h5
+(
+    mkdir -p datasets/ascadv1_variable
+    cd datasets/ascadv1_variable
+    wget https://www.data.gouv.fr/api/1/datasets/r/3217dcc0-184f-402b-8914-e31cc120c51c -O atmega8515-raw-traces.h5
+)
 ```
 - CHES-CTF-2018 ([link](https://zenodo.org/records/3733418#.Yc2iq1ko9Pa))
 ```bash
-mkdir -p datasets/ches_ctf_2018
-cd datasets/ches_ctf_2018
-wget https://zenodo.org/records/3733418/files/PinataAcqTask2.1_10k_upload.trs
-wget https://zenodo.org/records/3733418/files/PinataAcqTask2.2_10k_upload.trs
-wget https://zenodo.org/records/3733418/files/PinataAcqTask2.3_10k_upload.trs
-wget https://zenodo.org/records/3733418/files/PinataAcqTask2.4_10k_upload.trs
-wget https://zenodo.org/records/3733418/files/PinataAcqTask2.5_1k_NK_upload.trs
-wget https://zenodo.org/records/3733418/files/PinataAcqTask2.6_1k_NK_upload.trs
+(
+    mkdir -p datasets/ches_ctf_2018
+    cd datasets/ches_ctf_2018
+    wget https://zenodo.org/records/3733418/files/PinataAcqTask2.1_10k_upload.trs
+    wget https://zenodo.org/records/3733418/files/PinataAcqTask2.2_10k_upload.trs
+    wget https://zenodo.org/records/3733418/files/PinataAcqTask2.3_10k_upload.trs
+    wget https://zenodo.org/records/3733418/files/PinataAcqTask2.4_10k_upload.trs
+    wget https://zenodo.org/records/3733418/files/PinataAcqTask2.5_1k_NK_upload.trs
+    wget https://zenodo.org/records/3733418/files/PinataAcqTask2.6_1k_NK_upload.trs
+)
 ```
 
 ### One-time dataset validation and preprocessing
@@ -111,11 +123,12 @@ PY
 
 ### Downloading pretrained models
 
-Pretrained models can be downloaded (1.4GB) from [this](https://drive.google.com/file/d/11Xx1D3CkgxK8cUF2JDmEpG3Bhgd6R8Ow/view?usp=sharing) Google Drive link (for the non-anonymous repo I'll host the files on HuggingFace so they can be downloaded from the command line). Then move the downloaded zip file to the project directory and run
+Pretrained models and results are available [here (HuggingFace)](https://huggingface.co/buckets/jgammell/simple-transformer-pipeline-for-sca). These can be installed from the web interface by downloading [this 1.4GB zip file](https://huggingface.co/buckets/jgammell/simple-transformer-pipeline-for-sca/resolve/pretrained-models.zip?download=true) and extracting it to the base directory of the project. Alternately, they can be programmatically downloaded using the [HuggingFace CLI](https://huggingface.co/docs/huggingface_hub/guides/cli) by running the following commands from the project directory:
 ```bash
-unzip pretrained-models.zip
+mkdir -p ./outputs
+hf buckets sync hf://buckets/jgammell/simple-transformer-pipeline-for-sca/outputs ./outputs
 ```
-This will result in the following directory structure (the same as what would result from training + evaluating from scratch as described in the next section):
+Either option should produce the following directory structure expected by evaluation scripts:
 ```
 ./outputs/
 ├── ascadv1_fixed
@@ -131,9 +144,17 @@ This will result in the following directory structure (the same as what would re
 ├── ascadv1_variable
 │   └── demo_run
 │       ├── "
-└── ches_ctf_2018
-    └── demo_run
-        ├── "
+├── ches_ctf_2018
+|   └── demo_run
+|       ├── "
+./config/
+├── ...
+./experiments/
+├── ...
+./images_for_readme/
+├── ...
+./src/
+├── ...
 ```
 
 ## Usage instructions
@@ -253,9 +274,17 @@ FLOPs. This scaling behavior suggests that the $O(LND^2)$ term is dominant. Whil
 
 If you use this code or our work, we would appreciate a citation:
 ```bibtex
-(redacted for anonymous submission)
+@misc{gammell2026simpletransformerpipelinefullkey,
+      title={A Simple Transformer Pipeline for Full-Key Side-Channel Attacks on Uncropped Datasets}, 
+      author={Jimmy Gammell and Kaushik Roy},
+      year={2026},
+      eprint={2608.30105},
+      archivePrefix={arXiv},
+      primaryClass={cs.CR},
+      url={https://arxiv.org/abs/2608.30105}, 
+}
 ```
 
 ### Contact
 
-If you have questions or want to point out bugs, don't hesitate to open an issue or contact me at `redacted`.
+If you have questions or want to point out bugs, don't hesitate to open an issue or contact me at `jgammell@purdue.edu`.
