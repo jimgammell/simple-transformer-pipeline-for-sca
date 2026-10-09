@@ -1,0 +1,21 @@
+message: "If you use this software in your research, please cite the accompanying paper."
+title: "A Simple Transformer Pipeline for Full-Key Side-Channel Attacks on Uncropped Datasets"
+type: software
+authors:
+  - family-names: Gammell
+    given-names: Jimmy
+  - family-names: Roy
+    given-names: Kaushik
+repository-code: "https://github.com/jimgammell/simple-transformer-pipeline-for-sca"
+license: MIT
+
+preferred-citation:
+  type: article
+  title: "A Simple Transformer Pipeline for Full-Key Side-Channel Attacks on Uncropped Datasets"
+  authors:
+    - family-names: Gammell
+      given-names: Jimmy
+    - family-names: Roy
+      given-names: Kaushik
+  year: 2026
+  url: "https://arxiv.org/abs/2608.30105"
