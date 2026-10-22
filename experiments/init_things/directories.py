@@ -41,6 +41,7 @@ ASCADV2_ROOT: Optional[Path] = None
 CHES_CTF_2018_ROOT: Optional[Path] = None
 DPAV4d2_ROOT: Optional[Path] = None
 ESHARDS_ROOT: Optional[Path] = None
+SPOOK_ROOT: Optional[Path] = None
 DOWNLOADS_CACHE_ROOT: Optional[Path] = None
 OUTPUTS_ROOT: Optional[Path] = None
 
@@ -52,6 +53,7 @@ def append_directory_clargs(p: argparse.ArgumentParser):
         ('ches-ctf-2018-root', 'Root directory for CHES-CTF-2018'),
         ('dpav4_2-root', 'Root directory for DPAv4.2'),
         ('eshards-root', 'Root directory for eShard datasets'),
+        ('spook-root', 'Root directory for Spook SCA CTF datasets'),
         ('downloads-cache-root', 'Root directory for caching downloaded files'),
         ('outputs-root', 'Root directory for experiment outputs')
     ):
@@ -71,7 +73,7 @@ def load_directory_config() -> Dict[str, Path]:
         return directories
 
 def init_directories(clargs: Optional[Dict[str, str]] = None, config: Optional[Dict[str, str]] = None):
-    global ASCADV1_FIXED_ROOT, ASCADV1_VARIABLE_ROOT, ASCADV2_ROOT, CHES_CTF_2018_ROOT, DPAV4d2_ROOT, ESHARDS_ROOT, DOWNLOADS_CACHE_ROOT, OUTPUTS_ROOT
+    global ASCADV1_FIXED_ROOT, ASCADV1_VARIABLE_ROOT, ASCADV2_ROOT, CHES_CTF_2018_ROOT, DPAV4d2_ROOT, ESHARDS_ROOT, SPOOK_ROOT, DOWNLOADS_CACHE_ROOT, OUTPUTS_ROOT
     assert (clargs is not None) or (config is not None)
     if clargs is None:
         clargs = dict()
@@ -96,6 +98,9 @@ def init_directories(clargs: Optional[Dict[str, str]] = None, config: Optional[D
         elif dirkey == 'eshards-root':
             ESHARDS_ROOT = Path(dirpath)
             ESHARDS_ROOT.mkdir(exist_ok=True)
+        elif dirkey == 'spook-root':
+            SPOOK_ROOT = Path(dirpath)
+            SPOOK_ROOT.mkdir(exist_ok=True)
         elif dirkey == 'downloads-cache-root':
             DOWNLOADS_CACHE_ROOT = Path(dirpath)
             DOWNLOADS_CACHE_ROOT.mkdir(exist_ok=True)
@@ -120,6 +125,8 @@ def init_directories(clargs: Optional[Dict[str, str]] = None, config: Optional[D
             DPAV4d2_ROOT = Path(dirpath)
         elif dirkey == 'eshards_root':
             ESHARDS_ROOT = Path(dirpath)
+        elif dirkey == 'spook_root':
+            SPOOK_ROOT = Path(dirpath)
         elif dirkey == 'downloads-cache-root':
             DOWNLOADS_CACHE_ROOT = Path(dirpath)
             DOWNLOADS_CACHE_ROOT.mkdir(exist_ok=True, parents=True)

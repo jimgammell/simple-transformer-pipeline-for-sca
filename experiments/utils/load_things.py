@@ -57,6 +57,13 @@ def load_numpy_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             shuffled=dataset_id == 'eshards-shuffled',
             **kwargs
         )
+    elif dataset_id == 'spook-sw3':
+        from uncropped_transformers.datasets.spook import Spook_NumpyDataset
+        dataset = Spook_NumpyDataset(
+            root=_dirs.SPOOK_ROOT,
+            partition=partition_id,
+            **kwargs
+        )
     else:
         assert False
     return dataset
@@ -109,6 +116,13 @@ def load_torch_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             root=_dirs.ESHARDS_ROOT,
             partition=partition_id,
             shuffled=dataset_id == 'eshards-shuffled',
+            **kwargs
+        )
+    elif dataset_id == 'spook-sw3':
+        from uncropped_transformers.datasets.spook import Spook_TorchDataset
+        dataset = Spook_TorchDataset(
+            root=_dirs.SPOOK_ROOT,
+            partition=partition_id,
             **kwargs
         )
     else:

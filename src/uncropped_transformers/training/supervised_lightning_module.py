@@ -160,14 +160,12 @@ class SupervisedModule(lightning.LightningModule):
         else:
             assert False
         if self.training and self.config.random_roll_scale > 0:
-            shift_sgn = 1 if np.random.randint(2) else -1
-            shift_amt = int(abs(self.config.random_roll_scale * np.random.standard_normal()))
-            if shift_amt > 0:
-                trace = nn.functional.pad(trace, (shift_amt, shift_amt), mode='reflect')
-                if shift_sgn > 0:
-                    trace = trace[..., :-2*shift_amt]
-                else:
-                    trace = trace[..., 2*shift_amt:]
+            timestep_count = trace.shape[-1]
+            period = max(2*(timestep_count - 1), 1)
+            shift = (self.config.random_roll_scale * torch.randn(trace.shape[0], device=trace.device)).long()
+            src = (torch.arange(timestep_count, device=trace.device) - shift[:, None]) % period
+            src = torch.where(src >= timestep_count, period - src, src)
+            trace = trace.gather(-1, src[:, None, :].expand(-1, trace.shape[1], -1))
         if self.training and self.config.random_lpf_scale > 0:
             smooth_radius = int(abs(self.config.random_lpf_scale * np.random.standard_normal()))
             if smooth_radius > 0:

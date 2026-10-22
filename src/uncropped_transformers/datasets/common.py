@@ -9,5 +9,6 @@ DATASET = Literal[
     'ches-ctf-2018',
     'dpav4d2',
     'eshards-non-shuffled',
-    'eshards-shuffled'
+    'eshards-shuffled',
+    'spook-sw3'
 ]
