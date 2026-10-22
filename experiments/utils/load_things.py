@@ -49,6 +49,14 @@ def load_numpy_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             partition=partition_id,
             **kwargs
         )
+    elif dataset_id in ('eshards-non-shuffled', 'eshards-shuffled'):
+        from uncropped_transformers.datasets.eshards import EShards_NumpyDataset
+        dataset = EShards_NumpyDataset(
+            root=_dirs.ESHARDS_ROOT,
+            partition=partition_id,
+            shuffled=dataset_id == 'eshards-shuffled',
+            **kwargs
+        )
     else:
         assert False
     return dataset
@@ -93,6 +101,14 @@ def load_torch_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
         dataset = DPAv4d2_TorchDataset(
             root=_dirs.DPAV4d2_ROOT,
             partition=partition_id,
+            **kwargs
+        )
+    elif dataset_id in ('eshards-non-shuffled', 'eshards-shuffled'):
+        from uncropped_transformers.datasets.eshards import EShards_TorchDataset
+        dataset = EShards_TorchDataset(
+            root=_dirs.ESHARDS_ROOT,
+            partition=partition_id,
+            shuffled=dataset_id == 'eshards-shuffled',
             **kwargs
         )
     else:
