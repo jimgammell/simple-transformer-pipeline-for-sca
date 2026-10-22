@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any, Annotated, Literal
+from typing import List, Optional, Dict, Any, Annotated, Literal, Union
 
 from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
 
@@ -11,7 +11,7 @@ from uncropped_transformers.models.model import GREY_BOX_HEAD, TRUNK, POSITION_E
 class DataConfig(BaseModel):
     id: DATASET
     target_byte: List[int]
-    target_variable: str
+    target_variable: Union[str, List[str]]
     preprocessing: PREPROCESSING
     random_roll_scale: Annotated[float, Field(ge=0)]
     random_lpf_scale: Annotated[float, Field(ge=0)]

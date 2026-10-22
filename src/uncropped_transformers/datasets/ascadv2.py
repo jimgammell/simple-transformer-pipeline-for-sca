@@ -24,7 +24,8 @@ TARGET_VARIABLE = Literal[
     'alpha',
     'beta',
     'subbytes',
-    'masked_subbytes'
+    'masked_subbytes',
+    'perm_indices'
 ]
 G = np.array([0x0C, 0x05, 0x06, 0x0b, 0x09, 0x00, 0x0a, 0x0d, 0x03, 0x0e, 0x0f, 0x08, 0x04, 0x07, 0x01, 0x02], dtype=np.uint8)
 
@@ -47,6 +48,8 @@ def repr_target(variable: TARGET_VARIABLE, byte: Optional[TARGET_BYTE] = None) -
         rv = k_repr
     elif variable == 'plaintext':
         rv = w_repr
+    elif variable == 'perm_indices':
+        rv = r'\pi'
     else:
         assert False
     rv = f'${rv}$'
@@ -120,7 +123,10 @@ class ASCADv2_Config:
             self.target_variable = [self.target_variable]
         self.target_variable = np.array(self.target_variable)
         assert all(x in get_args(TARGET_VARIABLE) for x in self.target_variable)
-        self.num_labels = len(self.target_byte)*len(self.target_variable)
+        self.num_labels = sum(
+            1 if x in {'alpha', 'beta'} else 16 if x == 'perm_indices' else len(self.target_byte)
+            for x in self.target_variable
+        )
         self.num_classes = 256
 
 class ASCADv2_NumpyDataset(Base_NumpyDataset):

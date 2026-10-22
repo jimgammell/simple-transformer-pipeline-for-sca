@@ -17,7 +17,7 @@ def _is_training_complete(ckpt_path: Path, total_steps: int) -> bool:
 def train_supervised_model(
         *,
         dest: Path, training_module: LightningModule,
-        train_loader: DataLoader, val_loader: DataLoader, test_loader: DataLoader,
+        train_loader: DataLoader, val_loader: DataLoader,
         total_steps: int,
         grad_clip_val: Optional[float] = None,
         accumulate_grad_batches: int = 1,
@@ -32,7 +32,7 @@ def train_supervised_model(
 
     # Skip training entirely if already complete
     if latest_ckpt_path.exists() and _is_training_complete(latest_ckpt_path, total_steps):
-        print(f'Training already complete (global_step >= {total_steps}). Skipping to test evaluation.')
+        print(f'Training already complete (global_step >= {total_steps}). Skipping training.')
     else:
         callbacks = []
         if early_stop_metric is not None:
@@ -90,16 +90,3 @@ def train_supervised_model(
             merged = pd.concat([old_df, new_df], ignore_index=True)
             merged.to_csv(metrics_csv, index=False)
             metrics_backup.unlink()
-
-    best_ckpt_path = dest / f'{best_ckpt_name}.ckpt'
-    test_ckpt_path = best_ckpt_path if best_ckpt_path.exists() else dest / 'latest.ckpt'
-    try:
-        test_trainer = Trainer(
-            accelerator='gpu',
-            precision='bf16-mixed',
-            logger=False,
-            default_root_dir=dest,
-        )
-        test_trainer.test(training_module, dataloaders=test_loader, ckpt_path=str(test_ckpt_path), weights_only=False)
-    except Exception as e:
-        print(f"Warning: test step failed with {type(e).__name__}: {e}")

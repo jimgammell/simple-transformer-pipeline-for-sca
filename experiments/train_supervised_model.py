@@ -51,18 +51,11 @@ def construct_datasets(config: SupervisedTrainingConfig) -> Tuple[Dataset, ...]:
         target_byte=config.data.target_byte,
         target_variable=config.data.target_variable
     )
-    attack_set = load_torch_dataset(
-        config.data.id,
-        'attack',
-        target_byte=config.data.target_byte,
-        target_variable=config.data.target_variable
-    )
     indices = np.random.default_rng(seed=str_to_seed('data_partition')).permutation(len(profiling_set))
     val_len = int(len(indices)*config.data.val_prop)
     train_set = Subset(copy(profiling_set), indices=indices[:-val_len])
     val_set = Subset(copy(profiling_set), indices=indices[-val_len:])
-    test_set = copy(attack_set)
-    return profiling_set, attack_set, train_set, val_set, test_set
+    return profiling_set, train_set, val_set
 
 def construct_module(profiling_set: Base_TorchDataset, config: SupervisedTrainingConfig) -> SupervisedModule:
     module = SupervisedModule(
@@ -129,15 +122,14 @@ def run_train_model(
         aux_callbacks: Optional[List[lightning.Callback]] = None
 ):
     set_seed(config.training.seed)
-    profiling_set, attack_set, train_set, val_set, test_set = construct_datasets(config)
-    train_loader, val_loader, test_loader = construct_loaders([train_set], [val_set, test_set], batch_size=config.training.batch_size, num_workers=config.training.num_workers)
+    profiling_set, train_set, val_set = construct_datasets(config)
+    train_loader, val_loader = construct_loaders([train_set], [val_set], batch_size=config.training.batch_size, num_workers=config.training.num_workers)
     training_module = construct_module(profiling_set, config)
     train_supervised_model(
         dest=dest,
         training_module=training_module,
         train_loader=train_loader,
         val_loader=val_loader,
-        test_loader=test_loader,
         total_steps=config.training.total_steps,
         grad_clip_val=config.training.grad_clip_val,
         accumulate_grad_batches=config.training.accumulate_grad_batches,

@@ -1,0 +1,54 @@
+data:
+  id: ascadv2
+  target_byte: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+  target_variable: [alpha, beta, masked_subbytes, perm_indices]
+  preprocessing: standardize
+  random_roll_scale: 0.
+  random_lpf_scale: 0.
+  val_prop: 0.2
+training:
+  total_steps: 100000
+  lr_warmup_frac: 0.05
+  lr_const_frac: 0.
+  batch_size: 64
+  base_lr: 0.001
+  lr_decay_multiplier: 0.001
+  weight_decay: 0.05
+  label_smoothing: 0.
+  mixup_alpha: 0.
+  additive_gaussian_noise: 0.
+  grad_clip_val: 1.
+  accumulate_grad_batches: 1
+  early_stop_metric: val/rank
+  early_stop_mode: min
+  seed: 0
+  compile: true
+  num_workers: 8
+mtd:
+  attack_count: 1000
+  traces_per_attack: 1000
+model:
+  grey_box_head: null
+  leakage_model: id
+  trunk: transformer
+  position_embedding: rope
+  pooling: token
+  head: tied
+  fnn_style: mlp
+  patch_size: 1000
+  use_fourier_embed: false
+  fourier_embed_num_bands: null
+  fourier_embed_sigma: null
+  embedding_dim: 256
+  expansion_factor: 4
+  trunk_blocks: 4
+  head_count: null
+  register_tokens: 0
+  input_dropout_rate: 0.
+  input_droppatch_rate: 0.
+  hidden_dropout_rate: 0.1
+  use_bias: false
+  perceiver_latent_dim: null
+  perceiver_self_attn_per_cross_attn_blocks: null
+  perceiver_cross_attn_head_count: null
+search_space: {}
