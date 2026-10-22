@@ -18,6 +18,7 @@ dependencies = [
     "colorcet",
     "rotary-embedding-torch",
     "lightning",
+    "tensorboard",
     "optuna",
     "pandas",
     "trsfile==0.3.2",

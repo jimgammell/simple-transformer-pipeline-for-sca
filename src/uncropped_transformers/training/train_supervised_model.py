@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 import lightning
 from lightning import Trainer, LightningModule
 from lightning.pytorch.callbacks import ModelCheckpoint
-from lightning.pytorch.loggers import CSVLogger
+from lightning.pytorch.loggers import CSVLogger, TensorBoardLogger
 
 def _is_training_complete(ckpt_path: Path, total_steps: int) -> bool:
     ckpt = torch.load(ckpt_path, map_location='cpu', weights_only=False)
@@ -69,10 +69,15 @@ def train_supervised_model(
             name='',
             version=''
         )
+        tb_logger = TensorBoardLogger(
+            save_dir=dest / 'tensorboard',
+            name='',
+            version=''
+        )
         trainer = Trainer(
             accelerator='gpu',
             precision='bf16-mixed',
-            logger=logger,
+            logger=[logger, tb_logger],
             callbacks=callbacks,
             max_steps=total_steps,
             accumulate_grad_batches=accumulate_grad_batches,
