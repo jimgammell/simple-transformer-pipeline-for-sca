@@ -111,6 +111,7 @@ def construct_module(profiling_set: Base_TorchDataset, config: SupervisedTrainin
         preprocessing=config.data.preprocessing,
         random_roll_scale=config.data.random_roll_scale,
         random_lpf_scale=config.data.random_lpf_scale,
+        random_roll_distribution=config.data.random_roll_distribution,
     )
     if config.training.compile:
         module.model.compile()
@@ -180,6 +181,8 @@ def main():
                         help='When using --optuna-sampler qmc, pre-enqueue this many QMC trials '
                              'before calling study.optimize(). Each parallel worker acquires a '
                              'file lock so the pre-generation runs in exactly one process.')
+    parser.add_argument('--optuna-sampler-seed', type=int, default=None,
+                        help='Seed for the Optuna sampler (default: global SEED)')
     append_directory_clargs(parser)
     args, overrides = parser.parse_known_args()
     init_directories(vars(args), load_directory_config())
@@ -229,7 +232,7 @@ def main():
             study_direction={'min': 'minimize', 'max': 'maximize'}[config.training.early_stop_mode],
             sampler_type=optuna_sampler_type,
             enable_pruning=optuna_enable_pruning,
-            seed=SEED
+            seed=args.optuna_sampler_seed if args.optuna_sampler_seed is not None else SEED
         )
         if optuna_sampler_type == 'qmc' and optuna_total_trials is not None:
             # Enqueue all QMC hyperparameter configurations before any worker starts

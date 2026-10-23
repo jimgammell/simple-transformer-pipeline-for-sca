@@ -15,6 +15,8 @@ from ..evaluation.rank import Rank
 from ..evaluation.acc import FullKeyAccuracy
 from ..models.building_blocks.bits_and_bytes import BitLogitsToByteLogits, HwLogitsToByteLogits
 
+RANDOM_ROLL_DISTRIBUTION = Literal['gaussian', 'uniform']
+
 @dataclass
 class SupervisedModuleConfig:
     model_constructor: Callable[[Dict[str, Any]], nn.Module]
@@ -34,6 +36,7 @@ class SupervisedModuleConfig:
     preprocessing: PREPROCESSING
     random_roll_scale: float
     random_lpf_scale: float
+    random_roll_distribution: RANDOM_ROLL_DISTRIBUTION = 'gaussian'
 
     def __post_init__(self):
         assert self.leakage_model in get_args(LEAKAGE_MODEL)
@@ -56,6 +59,7 @@ class SupervisedModuleConfig:
         assert self.preprocessing in get_args(PREPROCESSING)
         assert isinstance(self.random_roll_scale, float) and self.random_roll_scale >= 0
         assert isinstance(self.random_lpf_scale, float) and self.random_lpf_scale >= 0
+        assert self.random_roll_distribution in get_args(RANDOM_ROLL_DISTRIBUTION)
 
 class SupervisedModule(lightning.LightningModule):
     trace_mean: torch.Tensor
@@ -84,6 +88,7 @@ class SupervisedModule(lightning.LightningModule):
             preprocessing: PREPROCESSING,
             random_roll_scale: float,
             random_lpf_scale: float,
+            random_roll_distribution: RANDOM_ROLL_DISTRIBUTION = 'gaussian',
     ):
         super().__init__()
         self.save_hyperparameters(ignore=['trace_statistics'])
@@ -162,7 +167,11 @@ class SupervisedModule(lightning.LightningModule):
         if self.training and self.config.random_roll_scale > 0:
             timestep_count = trace.shape[-1]
             period = max(2*(timestep_count - 1), 1)
-            shift = (self.config.random_roll_scale * torch.randn(trace.shape[0], device=trace.device)).long()
+            if self.config.random_roll_distribution == 'gaussian':
+                shift = (self.config.random_roll_scale * torch.randn(trace.shape[0], device=trace.device)).long()
+            else:
+                max_shift = int(self.config.random_roll_scale)
+                shift = torch.randint(-max_shift, max_shift + 1, (trace.shape[0],), device=trace.device)
             src = (torch.arange(timestep_count, device=trace.device) - shift[:, None]) % period
             src = torch.where(src >= timestep_count, period - src, src)
             trace = trace.gather(-1, src[:, None, :].expand(-1, trace.shape[1], -1))

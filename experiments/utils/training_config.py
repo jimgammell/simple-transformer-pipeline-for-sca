@@ -3,7 +3,7 @@ from typing import List, Optional, Dict, Any, Annotated, Literal, Union
 from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
 
 from uncropped_transformers.datasets import DATASET
-from uncropped_transformers.training.supervised_lightning_module import PREPROCESSING, LEAKAGE_MODEL
+from uncropped_transformers.training.supervised_lightning_module import PREPROCESSING, LEAKAGE_MODEL, RANDOM_ROLL_DISTRIBUTION
 from uncropped_transformers.training.hyperparameter_tuning import ParamConfig
 from uncropped_transformers.models.model import GREY_BOX_HEAD, TRUNK, POSITION_EMBEDDING, POOLING, HEAD, FNN_STYLE
 
@@ -16,6 +16,7 @@ class DataConfig(BaseModel):
     random_roll_scale: Annotated[float, Field(ge=0)]
     random_lpf_scale: Annotated[float, Field(ge=0)]
     val_prop: Annotated[float, Field(gt=0, lt=1)]
+    random_roll_distribution: RANDOM_ROLL_DISTRIBUTION = 'gaussian'
 
     @field_validator('target_byte', mode='before')
     @classmethod
