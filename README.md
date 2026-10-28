@@ -47,16 +47,16 @@ Wall clock time is reported with our recommended training recipes on a machine w
 ## Installation
 
 This code was tested using Python 3.11.15. Follow the instructions below to install the project and its dependencies:
-1. Create and activate an environment for the project. For example, to do this with [micromamba](https://mamba.readthedocs.io/en/latest/installation/micromamba-installation.html):
-```bash
-micromamba create --name uncropped-transformers python=3.11
-micromamba activate uncropped-transformers
-```
-2. Clone the project, then install it alongside its dependencies:
+1. Clone the project:
 ```bash
 git clone https://github.com/jimgammell/simple-transformer-pipeline-for-sca.git
 cd simple-transformer-pipeline-for-sca
-pip install -e .
+```
+2. Create and activate an environment for the project using [uv](https://docs.astral.sh/uv/getting-started/installation/), then install it alongside its dependencies:
+```bash
+uv venv --python 3.11
+source .venv/bin/activate
+uv pip install -e .
 ```
 
 ### Downloading datasets
@@ -95,7 +95,7 @@ You may download some or all of the following datasets by running the commands b
 
 ### One-time dataset validation and preprocessing
 
-The first time a dataset is initialized, our code will run checksum validation, copy traces to a binary file to enable faster dataloading, and cache the per-feature mean and variance on the profiling set. We recommend running the following commands from the project directory to complete this step once before training with multiprocessing. 
+The first time a dataset is initialized, our code will run checksum validation, copy traces to a binary file to enable faster dataloading, and cache the per-feature mean and variance on the profiling set. We recommend running the following commands from the project directory to complete this step once before training/evaluation (otherwise dataloader multiprocessing might cause issues):
 - ASCADv1 (fixed key); expected runtime: 30 sec.
 ```bash
 python - <<'PY'
@@ -275,16 +275,16 @@ FLOPs. This scaling behavior suggests that the $O(LND^2)$ term is dominant. Whil
 If you use this code or our work, we would appreciate a citation:
 ```bibtex
 @misc{gammell2026simpletransformerpipelinefullkey,
-      title={A Simple Transformer Pipeline for Full-Key Side-Channel Attacks on Uncropped Datasets}, 
+      title={A Simple Transformer Pipeline for Full-Key Side-Channel Attacks on Uncropped Datasets},
       author={Jimmy Gammell and Kaushik Roy},
       year={2026},
       eprint={2608.30105},
       archivePrefix={arXiv},
       primaryClass={cs.CR},
-      url={https://arxiv.org/abs/2608.30105}, 
+      url={https://arxiv.org/abs/2608.30105},
 }
 ```
 
 ### Contact
 
-If you have questions or want to point out bugs, don't hesitate to open an issue or contact me at `jgammell@purdue.edu`.
+If you have questions or want to point out bugs, don't hesitate to open an issue or contact me at `jim@jimgammell.com`.
