@@ -113,7 +113,7 @@ class Attributor:
         elif attr_method == "input-x-gradient":
             attr_fn = partial(self.compute_input_x_gradient, **attr_kwargs)
         else:
-            assert False
+            raise ValueError(f"Unsupported attribution method: {attr_method!r}")
         attr = self.aggregate_attributions(
             attr_fn, dataloader, show_progress_bar=show_progress_bar
         )

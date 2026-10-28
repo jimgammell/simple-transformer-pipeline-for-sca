@@ -64,7 +64,9 @@ def accumulate_ranks(
     elif len(logits.shape) == 3:
         assert all(len(x.shape) == 2 for x in int_vars.values())
     else:
-        assert False
+        raise ValueError(
+            f"Expected logits with 2 or 3 dimensions, got shape: {logits.shape!r}"
+        )
     total_trace_count, byte_count, class_count = logits.shape
     assert all(total_trace_count == x.shape[0] for x in int_vars.values())
     # Only require 'key' to match byte_count; other vars (e.g. r_in, r_out) may have fewer bytes
@@ -76,13 +78,15 @@ def accumulate_ranks(
             torch.from_numpy(logits).double(), dim=-1
         ).numpy()
     else:
-        assert False
+        raise ValueError(f"Expected Tensor or ndarray logits, got: {type(logits)!r}")
     if all(isinstance(x, torch.Tensor) for x in int_vars.values()):
         int_vars = {k: v.cpu().numpy() for k, v in int_vars.items()}
     elif all(isinstance(x, np.ndarray) for x in int_vars.values()):
         pass
     else:
-        assert False
+        raise ValueError(
+            f"Expected uniformly Tensor or ndarray intermediate variables, got: { {k: type(v) for k, v in int_vars.items()}!r}"
+        )
     log_key_probs = target_preds_to_key_preds(log_target_probs, int_vars)
     if traces_per_attack is None:
         traces_per_attack = logits.shape[0]
@@ -115,7 +119,7 @@ def compute_mtd(
     elif reduction == "none":
         mtd = per_byte_mtd
     else:
-        assert False
+        raise ValueError(f"Unsupported MTD reduction: {reduction!r}")
     return mtd
 
 

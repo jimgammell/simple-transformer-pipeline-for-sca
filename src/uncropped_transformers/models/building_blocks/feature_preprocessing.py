@@ -76,7 +76,9 @@ class Patchifier(nn.Module):
         elif self.position_embedding == "none":
             pass
         else:
-            assert False
+            raise ValueError(
+                f"Unsupported position embedding: {self.position_embedding!r}"
+            )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         batch_size, seq_len, _ = x.shape

@@ -74,7 +74,7 @@ def repr_target(variable: TARGET_VARIABLE, byte: Optional[TARGET_BYTE] = None) -
     elif variable == "plaintext":
         rv = w_repr
     else:
-        assert False
+        raise ValueError(f"Unsupported target variable: {variable!r}")
     rv = f"${rv}$"
     return rv
 
@@ -207,7 +207,7 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
         elif self.config.partition == "attack":
             self.trace_count = 399_998
         else:
-            assert False
+            raise ValueError(f"Unsupported partition: {self.config.partition!r}")
         self.timestep_count = 1_000_000
         self.byte_count = 16
         self.trace_indices = np.arange(self.trace_count)
@@ -234,7 +234,7 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
                 datafiles = datafiles[4:]
                 exclude_indices = {99_999, 199_999}
             else:
-                assert False
+                raise ValueError(f"Unsupported partition: {self.config.partition!r}")
             extract_raw_dataset(
                 datafiles,
                 self.binary_trace_path,

@@ -226,7 +226,9 @@ def _optuna_objective(
     elif config.training.early_stop_mode == "min":
         objective = tracked_metric.min()
     else:
-        assert False
+        raise ValueError(
+            f"Unsupported early stop mode: {config.training.early_stop_mode!r}"
+        )
     return objective
 
 

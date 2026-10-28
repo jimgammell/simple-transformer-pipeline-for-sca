@@ -198,7 +198,7 @@ class Model(nn.Module):
             nn.init.trunc_normal_(self.cls_tokens, std=0.02)
             self.pool = TokenPool(output_tokens=self.config.output_count)
         else:
-            assert False
+            raise ValueError(f"Unsupported pooling: {self.config.pooling!r}")
 
         if self.config.head == "tied":
             self.heads = nn.Linear(
@@ -214,7 +214,7 @@ class Model(nn.Module):
                 ]
             )
         else:
-            assert False
+            raise ValueError(f"Unsupported head: {self.config.head!r}")
 
         if self.config.grey_box_head == "ascadv1":
             self.grey_box_head = ASCADv1Head()
@@ -286,10 +286,14 @@ class Model(nn.Module):
             x = self.heads(x)
         elif self.config.head == "untied":
             x = torch.stack(
-                [head(xp) for head, xp in zip(self.heads, x.unbind(dim=1))], dim=1
+                [
+                    head(xp)
+                    for head, xp in zip(self.heads, x.unbind(dim=1), strict=True)
+                ],
+                dim=1,
             )
         else:
-            assert False
+            raise ValueError(f"Unsupported head: {self.config.head!r}")
         if self.grey_box_head is not None:
             x = self.grey_box_head(x)
         return x

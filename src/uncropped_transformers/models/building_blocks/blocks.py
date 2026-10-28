@@ -51,7 +51,7 @@ class SelfAttentionBlock(nn.Module):
                 use_bias=use_bias,
             )
         else:
-            assert False
+            raise ValueError(f"Unsupported feed-forward style: {fnn_style!r}")
 
     def forward(
         self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
@@ -106,7 +106,7 @@ class CrossAttentionBlock(nn.Module):
                 use_bias=use_bias,
             )
         else:
-            assert False
+            raise ValueError(f"Unsupported feed-forward style: {fnn_style!r}")
 
     def forward(
         self,

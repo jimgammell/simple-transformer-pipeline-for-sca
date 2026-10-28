@@ -35,8 +35,10 @@ def run_plot_cost_scaling(dest: Path):
         (wall_time_ms, r"Time/step [ms]", None),
     ]
 
-    for ax, (metric_data, ylabel, yfmt) in zip(axes, panel_specs):
-        for color, (sv_key, (sv_label, sv_raw)) in zip(colors, sweep_cfgs.items()):
+    for ax, (metric_data, ylabel, yfmt) in zip(axes, panel_specs, strict=True):
+        for color, (sv_key, (sv_label, sv_raw)) in zip(
+            colors, sweep_cfgs.items(), strict=True
+        ):
             mask = sweep_var == sv_key
             if not mask.any():
                 continue

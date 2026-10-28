@@ -113,7 +113,9 @@ class SupervisedModule(lightning.LightningModule):
         elif self.config.leakage_model == "id":
             self.logits_to_byte_logits = nn.Identity()
         else:
-            assert False
+            raise ValueError(
+                f"Unsupported leakage model: {self.config.leakage_model!r}"
+            )
         if checkpoint_statistics is None:
             if trace_statistics is None:
                 raise ValueError(
@@ -193,7 +195,9 @@ class SupervisedModule(lightning.LightningModule):
         elif self.config.preprocessing == "normalize":
             trace = (trace - self.trace_min) / self.trace_rng
         else:
-            assert False
+            raise ValueError(
+                f"Unsupported preprocessing: {self.config.preprocessing!r}"
+            )
         if self.training and self.config.random_roll_scale > 0:
             shift_sgn = 1 if np.random.randint(2) else -1
             shift_amt = int(
@@ -265,7 +269,9 @@ class SupervisedModule(lightning.LightningModule):
                 reduction="none",
             ).reshape(batch_size, output_count)
         else:
-            assert False
+            raise ValueError(
+                f"Unsupported leakage model: {self.config.leakage_model!r}"
+            )
         return per_output_loss
 
     def _step(self, batch: BATCH, phase: PHASE) -> torch.Tensor:

@@ -80,7 +80,7 @@ def sample_hparams(
                 log=param_config.log,
             )
         else:
-            assert False
+            raise ValueError(f"Unsupported parameter type: {param_config.type!r}")
         rv[param_key] = param_val
     return rv
 
@@ -111,7 +111,7 @@ def get_study(
     elif sampler_type == "random":
         sampler = optuna.samplers.RandomSampler(seed=seed)
     else:
-        assert False
+        raise ValueError(f"Unsupported sampler type: {sampler_type!r}")
     if enable_pruning:
         pruner = optuna.pruners.HyperbandPruner(min_resource=50, reduction_factor=2)
     else:

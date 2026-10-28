@@ -43,9 +43,13 @@ def convert_trs_to_binary(
     sample_offsets: Optional[Sequence[int]] = None,
     use_progress_bar: bool = False,
 ):
-    data_files = [trsfile.open(data_path, "r") for data_path in data_paths]
     if sample_offsets is None:
-        sample_offsets = len(data_files) * [0]
+        sample_offsets = len(data_paths) * [0]
+    elif len(sample_offsets) != len(data_paths):
+        raise ValueError(
+            f"Expected {len(data_paths)} sample offsets, got {len(sample_offsets)}."
+        )
+    data_files = [trsfile.open(data_path, "r") for data_path in data_paths]
     row_count = sum(len(data_file) for data_file in data_files)
     col_count = len(data_files[0][0].samples)
     dest_memmap = np.memmap(
@@ -54,7 +58,7 @@ def convert_trs_to_binary(
     if use_progress_bar:
         progress_bar = tqdm(total=row_count)
     memmap_idx = 0
-    for data_file, sample_offset in zip(data_files, sample_offsets):
+    for data_file, sample_offset in zip(data_files, sample_offsets, strict=True):
         for trace in data_file:
             assert 0 <= memmap_idx < row_count
             trace = np.array(trace.samples)

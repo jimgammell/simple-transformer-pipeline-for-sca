@@ -73,7 +73,7 @@ def repr_target(variable: TARGET_VARIABLE, byte: Optional[str] = None) -> str:
     elif variable == "plaintext":
         rv = f"${w_repr}$"
     else:
-        assert False
+        raise ValueError(f"Unsupported target variable: {variable!r}")
     return rv
 
 
@@ -148,7 +148,7 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
             elif self.config.partition == "attack":
                 self.trace_count = 100_000
             else:
-                assert False
+                raise ValueError(f"Unsupported partition: {self.config.partition!r}")
         else:
             if self.config.cropped_traces:
                 self.timestep_count = 700
@@ -174,7 +174,7 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
             elif self.config.partition == "attack":
                 self.trace_count = 10_000
             else:
-                assert False
+                raise ValueError(f"Unsupported partition: {self.config.partition!r}")
         self.byte_count = 16
         if not self.data_path.exists():
             raise RuntimeError(
@@ -229,14 +229,18 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
                 elif self.config.partition == "attack":
                     return np.arange(2, 300000, 3)
                 else:
-                    assert False
+                    raise ValueError(
+                        f"Unsupported partition: {self.config.partition!r}"
+                    )
             else:
                 if self.config.partition == "profile":
                     return np.arange(0, 50000)
                 elif self.config.partition == "attack":
                     return np.arange(50000, 60000)
                 else:
-                    assert False
+                    raise ValueError(
+                        f"Unsupported partition: {self.config.partition!r}"
+                    )
         else:
             if self.config.variable_key:
                 if self.config.partition == "profile":
@@ -244,14 +248,18 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
                 elif self.config.partition == "attack":
                     return np.arange(100000)
                 else:
-                    assert False
+                    raise ValueError(
+                        f"Unsupported partition: {self.config.partition!r}"
+                    )
             else:
                 if self.config.partition == "profile":
                     return np.arange(50000)
                 elif self.config.partition == "attack":
                     return np.arange(10000)
                 else:
-                    assert False
+                    raise ValueError(
+                        f"Unsupported partition: {self.config.partition!r}"
+                    )
 
     def generate_trace_binary_file(self, use_progress_bar: bool = False):
         if not self.binary_trace_filename.exists():
@@ -285,14 +293,18 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
                 elif self.config.partition == "attack":
                     indices = np.arange(2, 300000, 3)
                 else:
-                    assert False
+                    raise ValueError(
+                        f"Unsupported partition: {self.config.partition!r}"
+                    )
             else:
                 if self.config.partition == "profile":
                     indices = np.arange(0, 50000)
                 elif self.config.partition == "attack":
                     indices = np.arange(50000, 60000)
                 else:
-                    assert False
+                    raise ValueError(
+                        f"Unsupported partition: {self.config.partition!r}"
+                    )
             with h5py.File(self.data_path, "r") as database:
                 self.keys = np.array(
                     database["metadata"]["key"][indices, ...], dtype=np.uint8

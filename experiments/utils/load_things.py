@@ -55,7 +55,7 @@ def load_numpy_dataset(
         )
 
     else:
-        assert False
+        raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
     return dataset
 
 
@@ -100,7 +100,7 @@ def load_torch_dataset(
         )
 
     else:
-        assert False
+        raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
     return dataset
 
 

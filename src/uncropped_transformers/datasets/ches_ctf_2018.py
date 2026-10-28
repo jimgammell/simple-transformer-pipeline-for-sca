@@ -94,7 +94,7 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
             self.trace_count = 10_000
             self.sample_offsets = [0]
         else:
-            assert False
+            raise ValueError(f"Unsupported partition: {self.config.partition!r}")
         self.timestep_count = 650_000
         self.byte_count = 16
 
