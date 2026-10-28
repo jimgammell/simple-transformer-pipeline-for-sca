@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 import torch
 from torch.optim.lr_scheduler import LambdaLR
@@ -11,9 +9,9 @@ class CosineDecayLRSched(LambdaLR):
         self,
         optimizer: Optimizer,
         total_steps: int,
-        lr_warmup_steps: Optional[int] = None,
-        lr_const_steps: Optional[int] = None,
-        lr_decay_multiplier: Optional[float] = None,
+        lr_warmup_steps: int | None = None,
+        lr_const_steps: int | None = None,
+        lr_decay_multiplier: float | None = None,
     ):
         assert isinstance(total_steps, int) and total_steps > 0
         if lr_warmup_steps is None:

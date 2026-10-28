@@ -1,5 +1,4 @@
 from math import ceil
-from typing import Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -10,10 +9,10 @@ from .base_dataset import Base_NumpyDataset
 
 def compute_trace_statistics(
     dataset: Base_NumpyDataset,
-    chunk_size: Optional[int] = None,
+    chunk_size: int | None = None,
     use_progress_bar: bool = False,
     dtype: np.dtype = np.float32,
-) -> Tuple[NDArray[np.floating], ...]:
+) -> tuple[NDArray[np.floating], ...]:
     row_count = dataset.trace_count
     col_count = dataset.timestep_count
     if chunk_size is None:

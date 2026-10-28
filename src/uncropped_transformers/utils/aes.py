@@ -79,4 +79,4 @@ def mult_gf256(a: NDArray[np.integer], b: NDArray[np.integer]) -> NDArray[np.int
     return rv
 
 
-__all__ = ["SBOX", "INVERSE_SBOX", "LOG_TABLE", "ALOG_TABLE", "GF256_INV", "mult_gf256"]
+__all__ = ["ALOG_TABLE", "GF256_INV", "INVERSE_SBOX", "LOG_TABLE", "SBOX", "mult_gf256"]

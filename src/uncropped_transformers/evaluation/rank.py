@@ -1,5 +1,3 @@
-from typing import Union
-
 import numpy as np
 import torch
 from numba import jit
@@ -22,8 +20,8 @@ def _get_rank(
 
 
 def get_rank(
-    preds: Union[torch.Tensor, NDArray[np.floating]],
-    targets: Union[torch.Tensor, NDArray[np.integer]],
+    preds: torch.Tensor | NDArray[np.floating],
+    targets: torch.Tensor | NDArray[np.integer],
 ) -> NDArray[np.int64]:
     if isinstance(preds, torch.Tensor):
         preds = preds.float().detach().cpu().numpy()

@@ -1,7 +1,7 @@
 import argparse
 import logging
 from pathlib import Path
-from typing import Dict, Optional, get_args
+from typing import get_args
 
 import numpy as np
 import torch
@@ -27,8 +27,8 @@ from uncropped_transformers.evaluation.mtd import accumulate_ranks, compute_mtd
 
 
 def run_attack_performance_evalutaion(
-    ckpt_path: Path, dataset_id: DATASET, dataset_kwargs: Optional[Dict] = None
-) -> Dict[str, NDArray[np.floating]]:
+    ckpt_path: Path, dataset_id: DATASET, dataset_kwargs: dict | None = None
+) -> dict[str, NDArray[np.floating]]:
     dataset_kwargs = dataset_kwargs or {}
 
     attack_set = load_torch_dataset(dataset_id, "attack", **dataset_kwargs)
@@ -94,12 +94,12 @@ def main():
     args = parser.parse_args()
     init_directories(vars(args), load_directory_config())
 
-    dataset_id: Optional[DATASET] = args.dataset
+    dataset_id: DATASET | None = args.dataset
     model_ckpt_path: Path = args.model_ckpt_path
     config_dir = model_ckpt_path.parent
-    config: Optional[SupervisedTrainingConfig] = None
+    config: SupervisedTrainingConfig | None = None
     if (config_dir / "config.yaml").exists():
-        with open(config_dir / "config.yaml", "r") as f:
+        with open(config_dir / "config.yaml") as f:
             config_kw = safe_load_yaml(f)
         config = SupervisedTrainingConfig(**config_kw)
     if dataset_id is None:

@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import Literal
 
 import lightning
 import pandas as pd
@@ -23,11 +23,11 @@ def train_supervised_model(
     train_loader: DataLoader,
     val_loader: DataLoader,
     total_steps: int,
-    grad_clip_val: Optional[float] = None,
+    grad_clip_val: float | None = None,
     accumulate_grad_batches: int = 1,
-    early_stop_metric: Optional[str] = "val_rank",
+    early_stop_metric: str | None = "val_rank",
     early_stop_mode: Literal["min", "max"] = "max",
-    aux_callbacks: Optional[List[lightning.Callback]] = None,
+    aux_callbacks: list[lightning.Callback] | None = None,
 ):
     latest_ckpt_path = dest / "latest.ckpt"
     if early_stop_metric is not None:

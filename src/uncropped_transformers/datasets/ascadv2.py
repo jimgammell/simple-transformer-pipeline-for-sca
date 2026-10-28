@@ -1,17 +1,11 @@
 # Adapted from https://github.com/ANSSI-FR/ASCAD/blob/master/ASCAD_generate.py
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
-    Dict,
-    List,
     Literal,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
     get_args,
 )
 
@@ -54,7 +48,7 @@ G = np.array(
 )
 
 
-def repr_target(variable: TARGET_VARIABLE, byte: Optional[TARGET_BYTE] = None) -> str:
+def repr_target(variable: TARGET_VARIABLE, byte: TARGET_BYTE | None = None) -> str:
     assert variable in get_args(TARGET_VARIABLE)
     if byte is not None:
         assert byte in get_args(TARGET_BYTE)
@@ -95,11 +89,11 @@ def apply_perm_indices(
 
 
 def extract_raw_dataset(
-    datafiles: List[Path],
+    datafiles: list[Path],
     trace_dest: Path,
     metadata_dest: Path,
     use_progress_bar: bool = False,
-    exclude_indices: Optional[Sequence[int]] = None,
+    exclude_indices: Sequence[int] | None = None,
     chunk_size: int = 4096,
 ):
     if exclude_indices is None:
@@ -163,10 +157,10 @@ def extract_raw_dataset(
 
 @dataclass
 class ASCADv2_Config:
-    root: Union[str, Path]
+    root: str | Path
     partition: PARTITION
-    target_byte: Union[TARGET_BYTE, Sequence[TARGET_BYTE]] = 2
-    target_variable: Union[TARGET_VARIABLE, Sequence[TARGET_VARIABLE]] = "subbytes"
+    target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2
+    target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes"
 
     def __post_init__(self):
         if isinstance(self.root, str):
@@ -191,10 +185,10 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
     def __init__(
         self,
         *,
-        root: Union[str, Path],
+        root: str | Path,
         partition: PARTITION,
-        target_byte: Union[TARGET_BYTE, List[TARGET_BYTE]] = 2,
-        target_variable: Union[TARGET_VARIABLE, List[TARGET_VARIABLE]] = "subbytes",
+        target_byte: TARGET_BYTE | list[TARGET_BYTE] = 2,
+        target_variable: TARGET_VARIABLE | list[TARGET_VARIABLE] = "subbytes",
     ):
         self.config = ASCADv2_Config(
             root=root,
@@ -264,7 +258,7 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
     @staticmethod
     def target_preds_to_key_preds(
         target_preds: NDArray[np.floating],
-        intermediate_variables: Dict[str, NDArray[np.uint8]],
+        intermediate_variables: dict[str, NDArray[np.uint8]],
     ) -> NDArray[np.floating]:
         plaintext = intermediate_variables["plaintext"]
         assert len(target_preds.shape) == len(plaintext.shape) + 1
@@ -278,7 +272,7 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
 
     def get_trace_statistics(
         self, use_progress_bar: bool = False
-    ) -> Dict[str, NDArray[np.floating]]:
+    ) -> dict[str, NDArray[np.floating]]:
         assert self.config.partition == "profile"
         cache_path = self.config.root / "ascadv2.stats-cache.npz"
         if not cache_path.exists():
@@ -296,7 +290,7 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
         key: NDArray[np.uint8],
         plaintext: NDArray[np.uint8],
         masks: NDArray[np.uint8],
-    ) -> Dict[str, NDArray[np.uint8]]:
+    ) -> dict[str, NDArray[np.uint8]]:
         perm_indices = apply_perm_indices(
             np.arange(16, dtype=np.uint8),
             masks[..., 0, np.newaxis],
@@ -322,9 +316,9 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
         return intermediate_variables
 
     def np_getitem(
-        self, _idx: Union[int, slice, NDArray[np.integer], Sequence[int]]
-    ) -> Tuple[
-        NDArray[np.floating], NDArray[np.integer], Dict[str, NDArray[np.integer]]
+        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[
+        NDArray[np.floating], NDArray[np.integer], dict[str, NDArray[np.integer]]
     ]:
         if isinstance(_idx, slice):
             _idx = np.arange(*_idx.indices(len(self.trace_indices)))
@@ -378,8 +372,8 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
 class ASCADv2_TorchDataset(Base_TorchDataset, ASCADv2_NumpyDataset):
     def __init__(
         self,
-        transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
-        target_transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
+        transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
+        target_transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
         **dataset_config,
     ):
         Base_TorchDataset.__init__(
@@ -388,8 +382,8 @@ class ASCADv2_TorchDataset(Base_TorchDataset, ASCADv2_NumpyDataset):
         ASCADv2_NumpyDataset.__init__(self, **dataset_config)
 
     def __getitem__(
-        self, _idx: Union[int, slice, NDArray[np.integer], Sequence[int]]
-    ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, NDArray[np.integer]]]:
+        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, NDArray[np.integer]]]:
         trace, target, intermediate_variables = ASCADv2_NumpyDataset.__getitem__(
             self, _idx
         )

@@ -1,6 +1,6 @@
+from collections.abc import Sequence
 from math import ceil
 from pathlib import Path
-from typing import Optional, Sequence
 
 import h5py
 import numpy as np
@@ -11,7 +11,7 @@ from tqdm import tqdm
 def convert_hdf5_to_binary(
     dataset: h5py.Dataset,
     dest: Path,
-    indices: Optional[np.ndarray] = None,
+    indices: np.ndarray | None = None,
     chunk_size: int = 4096,
     use_progress_bar: bool = False,
 ):
@@ -40,7 +40,7 @@ def convert_hdf5_to_binary(
 def convert_trs_to_binary(
     data_paths: Sequence[Path],
     dest: Path,
-    sample_offsets: Optional[Sequence[int]] = None,
+    sample_offsets: Sequence[int] | None = None,
     use_progress_bar: bool = False,
 ):
     if sample_offsets is None:

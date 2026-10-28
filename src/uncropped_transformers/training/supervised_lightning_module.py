@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Optional, get_args
+from typing import Any, get_args
 
 import lightning
 import numpy as np
@@ -21,18 +22,18 @@ from .cosine_decay_lr_scheduler import CosineDecayLRSched
 
 @dataclass
 class SupervisedModuleConfig:
-    model_constructor: Callable[[Dict[str, Any]], nn.Module]
-    model_kwargs: Dict[str, Any]
+    model_constructor: Callable[[dict[str, Any]], nn.Module]
+    model_kwargs: dict[str, Any]
     leakage_model: LEAKAGE_MODEL
     num_labels: int
     total_steps: int
-    lr_warmup_steps: Optional[int]
-    lr_const_steps: Optional[int]
+    lr_warmup_steps: int | None
+    lr_const_steps: int | None
     base_lr: float
-    lr_decay_multiplier: Optional[float]
+    lr_decay_multiplier: float | None
     weight_decay: float
     label_smoothing: float
-    mtd_kwargs: Dict[str, Any]
+    mtd_kwargs: dict[str, Any]
     additive_gaussian_noise: float
     mixup_alpha: float
     preprocessing: PREPROCESSING
@@ -79,25 +80,25 @@ class SupervisedModule(lightning.LightningModule):
     def __init__(
         self,
         *,
-        model_constructor: Callable[[Dict[str, Any]], nn.Module],
-        model_kwargs: Dict[str, Any],
+        model_constructor: Callable[[dict[str, Any]], nn.Module],
+        model_kwargs: dict[str, Any],
         leakage_model: LEAKAGE_MODEL,
         num_labels: int,  # i.e. how many variables we are predicting
         total_steps: int,
-        lr_warmup_steps: Optional[int],
-        lr_const_steps: Optional[int],
+        lr_warmup_steps: int | None,
+        lr_const_steps: int | None,
         base_lr: float,
-        lr_decay_multiplier: Optional[float],
+        lr_decay_multiplier: float | None,
         weight_decay: float,
         label_smoothing: float,
-        mtd_kwargs: Dict[str, Any],
-        trace_statistics: Optional[Dict[str, np.ndarray]] = None,
+        mtd_kwargs: dict[str, Any],
+        trace_statistics: dict[str, np.ndarray] | None = None,
         additive_gaussian_noise: float,
         mixup_alpha: float,
         preprocessing: PREPROCESSING,
         random_roll_scale: float,
         random_lpf_scale: float,
-        checkpoint_statistics: Optional[Dict[str, torch.Tensor]] = None,
+        checkpoint_statistics: dict[str, torch.Tensor] | None = None,
     ):
         super().__init__()
         self.save_hyperparameters(ignore=["trace_statistics", "checkpoint_statistics"])
@@ -159,7 +160,7 @@ class SupervisedModule(lightning.LightningModule):
             }
         )
 
-    def configure_optimizers(self) -> Dict[str, Any]:
+    def configure_optimizers(self) -> dict[str, Any]:
         yes_wd_params, no_wd_params = [], []
         for param_name, param in self.model.named_parameters():
             if not param.requires_grad:

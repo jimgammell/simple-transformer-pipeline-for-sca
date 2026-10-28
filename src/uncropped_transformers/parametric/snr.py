@@ -1,5 +1,3 @@
-from typing import Dict
-
 import numba
 import numpy as np
 from numpy.typing import NDArray
@@ -66,7 +64,7 @@ def compute_snr(
     chunk_size: int = 4096,
     use_progress_bar: bool = False,
     dtype: np.dtype = np.float32,
-) -> Dict[str, NDArray[np.floating]]:
+) -> dict[str, NDArray[np.floating]]:
     """
     Compute Signal-to-Noise Ratio (SNR) for side-channel analysis.
 

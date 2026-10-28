@@ -1,6 +1,6 @@
 import math
 from pathlib import Path
-from typing import Annotated, Any, Dict, List, Literal, Optional, Union, get_args
+from typing import Annotated, Any, Literal, get_args
 
 import lightning
 import numpy as np
@@ -14,14 +14,14 @@ StudyDirection = Literal["minimize", "maximize"]
 
 class CategoricalParamConfig(BaseModel):
     type: Literal["categorical"] = "categorical"
-    choices: List[Any]
+    choices: list[Any]
 
 
 class FloatParamConfig(BaseModel):
     type: Literal["float"] = "float"
     low: float
     high: float
-    step: Optional[Annotated[float, Field(gt=0)]] = None
+    step: Annotated[float, Field(gt=0)] | None = None
     log: StrictBool = False
 
 
@@ -29,12 +29,12 @@ class IntParamConfig(BaseModel):
     type: Literal["int"] = "int"
     low: int
     high: int
-    step: Optional[Annotated[int, Field(gt=0)]] = 1
+    step: Annotated[int, Field(gt=0)] | None = 1
     log: StrictBool = False
 
 
 ParamConfig = Annotated[
-    Union[CategoricalParamConfig, FloatParamConfig, IntParamConfig],
+    CategoricalParamConfig | FloatParamConfig | IntParamConfig,
     Field(discriminator="type"),
 ]
 
@@ -55,8 +55,8 @@ class PruningCallback(lightning.Callback):
 
 
 def sample_hparams(
-    trial: optuna.Trial, param_configs: Dict[str, Any]
-) -> Dict[str, Any]:
+    trial: optuna.Trial, param_configs: dict[str, Any]
+) -> dict[str, Any]:
     rv = dict()
     for param_key, param_config in param_configs.items():
         if param_config.type == "categorical":
@@ -90,7 +90,7 @@ def get_study(
     study_direction: StudyDirection,
     sampler_type: SamplerType = "random",
     enable_pruning: bool = False,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> optuna.Study:
     assert study_direction in get_args(StudyDirection)
 
@@ -129,9 +129,9 @@ def get_study(
 
 def generate_qmc_trials(
     study: optuna.Study,
-    search_space: Dict[str, Dict[str, Any]],
+    search_space: dict[str, dict[str, Any]],
     n_trials: int,
-    seed: Optional[int] = None,
+    seed: int | None = None,
     qmc_type: str = "sobol",
 ) -> None:
     """Pre-generate QMC hyperparameter configurations and enqueue them in the study.
@@ -158,7 +158,7 @@ def generate_qmc_trials(
 
     # Flatten search_space into an ordered list of (flat_key, ParamConfig) pairs.
     # flat_key is used as the Optuna parameter name, matching what sample_hparams() uses.
-    flat_params: List[tuple[str, Any]] = []
+    flat_params: list[tuple[str, Any]] = []
     for _field_key, field_space in search_space.items():
         for param_name, param_cfg in field_space.items():
             flat_params.append((param_name, param_cfg))
@@ -191,7 +191,7 @@ def generate_qmc_trials(
     samples = engine.random(n_to_add)  # shape (n_to_add, d)
 
     for row in samples:
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         for dim_idx, (param_name, param_cfg) in enumerate(flat_params):
             u = float(row[dim_idx])  # uniform sample in [0, 1)
             if param_cfg.type == "float":
@@ -214,15 +214,15 @@ def generate_qmc_trials(
                         math.log(param_cfg.low)
                         + u * (math.log(param_cfg.high) - math.log(param_cfg.low))
                     )
-                    val = int(round(val))
+                    val = round(val)
                 else:
                     step = param_cfg.step if param_cfg.step is not None else 1
                     n_steps = (param_cfg.high - param_cfg.low) // step
-                    val = param_cfg.low + int(math.floor(u * (n_steps + 1))) * step
+                    val = param_cfg.low + math.floor(u * (n_steps + 1)) * step
                     val = int(np.clip(val, param_cfg.low, param_cfg.high))
             elif param_cfg.type == "categorical":
                 choices = param_cfg.choices
-                idx = int(math.floor(u * len(choices)))
+                idx = math.floor(u * len(choices))
                 idx = min(idx, len(choices) - 1)
                 val = choices[idx]
             else:

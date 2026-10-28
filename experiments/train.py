@@ -5,7 +5,7 @@ import subprocess
 from copy import copy
 from functools import partial
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, get_args
+from typing import Any, get_args
 
 import lightning
 import numpy as np
@@ -40,7 +40,7 @@ from uncropped_transformers.training.train_supervised_model import (
 
 
 # function by Claude to override particular config arguments from the command line
-def _apply_overrides(config: Dict[str, Any], overrides: list) -> None:
+def _apply_overrides(config: dict[str, Any], overrides: list) -> None:
     i = 0
     while i < len(overrides):
         arg = overrides[i]
@@ -62,7 +62,7 @@ def _apply_overrides(config: Dict[str, Any], overrides: list) -> None:
         d[keys[-1]] = yaml.safe_load(raw_value)
 
 
-def construct_datasets(config: SupervisedTrainingConfig) -> Tuple[Dataset, ...]:
+def construct_datasets(config: SupervisedTrainingConfig) -> tuple[Dataset, ...]:
     profiling_set = load_torch_dataset(
         config.data.id,
         "profile",
@@ -142,7 +142,7 @@ def construct_module(
 def run_train_model(
     dest: Path,
     config: SupervisedTrainingConfig,
-    aux_callbacks: Optional[List[lightning.Callback]] = None,
+    aux_callbacks: list[lightning.Callback] | None = None,
 ):
     set_seed(config.training.seed)
     profiling_set, train_set, val_set = construct_datasets(config)
@@ -168,13 +168,13 @@ def run_train_model(
 
 
 def _write_or_check_config(
-    dest: Path, config_kw: Dict[str, Any], *, require_identity: bool = False
+    dest: Path, config_kw: dict[str, Any], *, require_identity: bool = False
 ) -> None:
     config_path = dest / "config.yaml"
     current_config = config_kw.copy()
     current_hash = current_config.pop("commit_hash", None)
     if config_path.exists():
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             existing_config = yaml.safe_load(f)
         existing_hash = existing_config.pop("commit_hash", None)
         if existing_hash != current_hash:
@@ -264,18 +264,18 @@ def main():
     config_path = config_root / f"{args.config_file}.yaml"
     assert config_path.exists()
     dest.mkdir(exist_ok=True, parents=True)
-    optuna_study_path: Optional[Path] = args.optuna_study_path
+    optuna_study_path: Path | None = args.optuna_study_path
     optuna_run_count: int = args.optuna_run_count
     optuna_enable_pruning: bool = args.optuna_enable_pruning
     optuna_sampler_type: SamplerType = args.optuna_sampler
-    optuna_total_trials: Optional[int] = args.optuna_total_trials
+    optuna_total_trials: int | None = args.optuna_total_trials
     if optuna_study_path is not None:
         assert len(overrides) == 0
         assert isinstance(optuna_study_path, Path)
         assert isinstance(optuna_run_count, int) and optuna_run_count >= 1
         assert isinstance(optuna_enable_pruning, bool)
         assert optuna_sampler_type in get_args(SamplerType)
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config_kw = safe_load_yaml(f)
     _apply_overrides(config_kw, overrides)
 

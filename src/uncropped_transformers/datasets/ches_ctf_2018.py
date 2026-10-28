@@ -2,18 +2,12 @@
 #  We use the files PinataAcqTask2.{1, 2, 3}_10k_upload.trs for profiling and PinataAcqTask2.4_10k_upload.trs for attacking.
 #  There are 2 more files which only contain 1k traces each -- IDK what they are, but similarly to above implementation, I'm not using them.
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
-    Dict,
-    List,
     Literal,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
     get_args,
 )
 
@@ -35,10 +29,10 @@ TARGET_VARIABLE = Literal["subbytes", "key", "plaintext", "ciphertext"]
 
 @dataclass
 class CHESCTF2018_Config:
-    root: Union[str, Path]
+    root: str | Path
     partition: PARTITION
-    target_byte: Union[TARGET_BYTE, Sequence[TARGET_BYTE]] = 2
-    target_variable: Union[TARGET_VARIABLE, Sequence[TARGET_VARIABLE]] = "subbytes"
+    target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2
+    target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes"
 
     def __post_init__(self):
         if isinstance(self.root, str):
@@ -63,10 +57,10 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
     def __init__(
         self,
         *,
-        root: Union[str, Path],
+        root: str | Path,
         partition: PARTITION,
-        target_byte: Union[TARGET_BYTE, List[TARGET_BYTE]] = 0,
-        target_variable: Union[TARGET_VARIABLE, List[TARGET_VARIABLE]] = "subbytes",
+        target_byte: TARGET_BYTE | list[TARGET_BYTE] = 0,
+        target_variable: TARGET_VARIABLE | list[TARGET_VARIABLE] = "subbytes",
     ):
         self.config = CHESCTF2018_Config(
             root=root,
@@ -155,7 +149,7 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
 
     def get_trace_statistics(
         self, use_progress_bar: bool = False
-    ) -> Dict[str, NDArray[np.floating]]:
+    ) -> dict[str, NDArray[np.floating]]:
         assert self.config.partition == "profile"
         cache_path = self.config.root / "ches_ctf_2018.stats-cache.npz"
         if not cache_path.exists():
@@ -173,7 +167,7 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
         key: NDArray[np.uint8],
         plaintext: NDArray[np.uint8],
         ciphertext: NDArray[np.uint8],
-    ) -> Dict[str, NDArray[np.uint8]]:
+    ) -> dict[str, NDArray[np.uint8]]:
         subbytes = aes.SBOX[key ^ plaintext]
         intermediate_variables = {
             "key": key,
@@ -186,7 +180,7 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
     @staticmethod
     def target_preds_to_key_preds(
         target_preds: NDArray[np.floating],
-        intermediate_variables: Dict[str, NDArray[np.uint8]],
+        intermediate_variables: dict[str, NDArray[np.uint8]],
     ) -> NDArray[np.floating]:
         plaintext = intermediate_variables["plaintext"]
         assert len(target_preds.shape) == len(plaintext.shape) + 1
@@ -199,9 +193,9 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
         return key_preds
 
     def np_getitem(
-        self, _idx: Union[int, slice, NDArray[np.integer], Sequence[int]]
-    ) -> Tuple[
-        NDArray[np.floating], NDArray[np.integer], Dict[str, NDArray[np.integer]]
+        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[
+        NDArray[np.floating], NDArray[np.integer], dict[str, NDArray[np.integer]]
     ]:
         if isinstance(_idx, slice):
             _idx = np.arange(*_idx.indices(len(self.trace_indices)))
@@ -251,8 +245,8 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
 class CHESCTF2018_TorchDataset(Base_TorchDataset, CHESCTF2018_NumpyDataset):
     def __init__(
         self,
-        transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
-        target_transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
+        transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
+        target_transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
         **dataset_config,
     ):
         Base_TorchDataset.__init__(
@@ -261,8 +255,8 @@ class CHESCTF2018_TorchDataset(Base_TorchDataset, CHESCTF2018_NumpyDataset):
         CHESCTF2018_NumpyDataset.__init__(self, **dataset_config)
 
     def __getitem__(
-        self, _idx: Union[int, slice, NDArray[np.integer], Sequence[int]]
-    ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, NDArray[np.integer]]]:
+        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, NDArray[np.integer]]]:
         trace, target, intermediate_variables = CHESCTF2018_NumpyDataset.__getitem__(
             self, _idx
         )

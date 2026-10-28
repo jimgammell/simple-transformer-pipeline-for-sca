@@ -1,5 +1,3 @@
-from typing import Optional
-
 import torch
 from torch import nn
 
@@ -44,7 +42,7 @@ class AttentionPool(nn.Module):
         nn.init.trunc_normal_(self.pre_query, std=0.02)
 
     def forward(
-        self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attn_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         batch_size, *_ = x.shape
         pre_query = self.pre_query.unsqueeze(0).expand(batch_size, -1, -1)

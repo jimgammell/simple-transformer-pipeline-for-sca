@@ -1,15 +1,9 @@
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
-    Dict,
-    List,
     Literal,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
     get_args,
 )
 
@@ -42,7 +36,7 @@ TARGET_VARIABLE = Literal[
 ]
 
 
-def repr_target(variable: TARGET_VARIABLE, byte: Optional[str] = None) -> str:
+def repr_target(variable: TARGET_VARIABLE, byte: str | None = None) -> str:
     assert variable in get_args(TARGET_VARIABLE)
     sbox_repr = r"\operatorname{Sbox}"
     k_repr = f"k[{byte}]" if byte is not None else "k"
@@ -79,10 +73,10 @@ def repr_target(variable: TARGET_VARIABLE, byte: Optional[str] = None) -> str:
 
 @dataclass
 class ASCADv1_Config:
-    root: Union[str, Path]
+    root: str | Path
     partition: PARTITION
-    target_byte: Union[TARGET_BYTE, Sequence[TARGET_BYTE]] = 2
-    target_variable: Union[TARGET_VARIABLE, Sequence[TARGET_VARIABLE]] = "subbytes"
+    target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2
+    target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes"
     variable_key: bool = False
     cropped_traces: bool = True
 
@@ -112,10 +106,10 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
     def __init__(
         self,
         *,
-        root: Union[str, Path],
+        root: str | Path,
         partition: PARTITION,
-        target_byte: Union[TARGET_BYTE, List[TARGET_BYTE]] = 2,
-        target_variable: Union[TARGET_VARIABLE, List[TARGET_VARIABLE]] = "subbytes",
+        target_byte: TARGET_BYTE | list[TARGET_BYTE] = 2,
+        target_variable: TARGET_VARIABLE | list[TARGET_VARIABLE] = "subbytes",
         variable_key: bool = False,
         cropped_traces: bool = False,
         binary_trace_file: bool = True,
@@ -205,7 +199,7 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
     @staticmethod
     def target_preds_to_key_preds(
         target_preds: NDArray[np.floating],
-        intermediate_variables: Dict[str, NDArray[np.uint8]],
+        intermediate_variables: dict[str, NDArray[np.uint8]],
     ) -> NDArray[np.floating]:
         plaintext = intermediate_variables["plaintext"]
         assert len(target_preds.shape) == len(plaintext.shape) + 1
@@ -318,7 +312,7 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
 
     def get_trace_statistics(
         self, use_progress_bar: bool = False
-    ) -> Dict[str, NDArray[np.floating]]:
+    ) -> dict[str, NDArray[np.floating]]:
         cache_path = self.config.root / (
             self.data_path.name.split(".")[0] + ".stats-cache.npz"
         )
@@ -337,7 +331,7 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
         key: NDArray[np.uint8],
         plaintext: NDArray[np.uint8],
         masks: NDArray[np.uint8],
-    ) -> Dict[str, NDArray[np.uint8]]:
+    ) -> dict[str, NDArray[np.uint8]]:
         if not self.config.variable_key:
             r = np.concatenate(
                 [np.zeros((*masks.shape[:-1], 2), dtype=np.uint8), masks[..., :-2]],
@@ -369,9 +363,9 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
         return intermediate_variables
 
     def np_getitem(
-        self, _idx: Union[int, slice, NDArray[np.integer], Sequence[int]]
-    ) -> Tuple[
-        NDArray[np.floating], NDArray[np.integer], Dict[str, NDArray[np.integer]]
+        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[
+        NDArray[np.floating], NDArray[np.integer], dict[str, NDArray[np.integer]]
     ]:
         if isinstance(_idx, slice):
             _idx = np.arange(*_idx.indices(len(self.trace_indices)))
@@ -427,8 +421,8 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
 class ASCADv1_TorchDataset(Base_TorchDataset, ASCADv1_NumpyDataset):
     def __init__(
         self,
-        transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
-        target_transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
+        transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
+        target_transform: Callable[[torch.Tensor], torch.Tensor] | None = None,
         **dataset_config,
     ):
         Base_TorchDataset.__init__(
@@ -437,8 +431,8 @@ class ASCADv1_TorchDataset(Base_TorchDataset, ASCADv1_NumpyDataset):
         ASCADv1_NumpyDataset.__init__(self, **dataset_config)
 
     def __getitem__(
-        self, _idx: Union[int, slice, NDArray[np.integer], Sequence[int]]
-    ) -> Tuple[torch.Tensor, torch.Tensor, Dict[str, NDArray[np.integer]]]:
+        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, NDArray[np.integer]]]:
         trace, target, intermediate_variables = ASCADv1_NumpyDataset.__getitem__(
             self, _idx
         )

@@ -1,6 +1,6 @@
 import argparse
 from pathlib import Path
-from typing import List, Optional, get_args
+from typing import get_args
 
 import numpy as np
 import torch
@@ -29,7 +29,7 @@ def compute_feature_attribution(
     module: SupervisedModule,
     profiling_loader: DataLoader,
     dest_dir: Path,
-    methods: List[ATTRIBUTION_METHOD],
+    methods: list[ATTRIBUTION_METHOD],
     identities: dict,
     overwrite: bool = False,
 ):
@@ -70,20 +70,20 @@ def main():
 
     ckpt_path: Path = args.ckpt_path
     assert ckpt_path.exists()
-    config_path: Optional[Path] = args.config_path
+    config_path: Path | None = args.config_path
     if config_path is None:
         config_path = ckpt_path.parent / "config.yaml"
     assert config_path.exists()
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config_kw = safe_load_yaml(f)
     config = SupervisedTrainingConfig(**config_kw)
-    dest: Optional[Path] = args.dest
+    dest: Path | None = args.dest
     if dest is None:
         dest = ckpt_path.parent
     dest.mkdir(exist_ok=True, parents=True)
-    attr_methods: List[ATTRIBUTION_METHOD] = args.attr_methods
+    attr_methods: list[ATTRIBUTION_METHOD] = args.attr_methods
     assert all(x in get_args(ATTRIBUTION_METHOD) for x in attr_methods)
-    batch_size: Optional[int] = args.batch_size
+    batch_size: int | None = args.batch_size
     if batch_size is not None:
         assert isinstance(batch_size, int) and batch_size > 0
         config.training.batch_size = batch_size
@@ -111,7 +111,7 @@ def main():
         )
         for method in attr_methods
     }
-    pending: List[ATTRIBUTION_METHOD] = [
+    pending: list[ATTRIBUTION_METHOD] = [
         method
         for method in attr_methods
         if not cache_matches(

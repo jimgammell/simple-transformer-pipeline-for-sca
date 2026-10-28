@@ -66,7 +66,7 @@ def main():
     config_path = config_root / f"{args.config_file}.yaml"
     assert config_path.exists(), f"Config not found: {config_path}"
 
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config_kw = safe_load_yaml(f)
     config_kw.pop("commit_hash", None)
     config = SupervisedTrainingConfig(**config_kw)

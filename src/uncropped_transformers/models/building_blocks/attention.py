@@ -1,7 +1,6 @@
 # Adapted from nanoGPT implementation: https://github.com/karpathy/nanoGPT
 
 from dataclasses import dataclass
-from typing import Optional
 
 import torch
 from rotary_embedding_torch import RotaryEmbedding
@@ -11,7 +10,7 @@ from torch import nn
 @dataclass
 class AttentionConfig:
     embedding_dim: int
-    head_count: Optional[int]
+    head_count: int | None
     dropout_rate: float
     use_bias: bool
     use_rope: bool
@@ -39,7 +38,7 @@ class SelfAttention(nn.Module):
         self,
         *,
         embedding_dim: int,
-        head_count: Optional[int],
+        head_count: int | None,
         dropout_rate: float,
         use_bias: bool,
         use_rope: bool,
@@ -68,7 +67,7 @@ class SelfAttention(nn.Module):
             self.rope = RotaryEmbedding(dim=self.config.rope_dim)
 
     def forward(
-        self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attn_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         batch_size, seq_len, emb_dim = x.shape
         assert emb_dim == self.config.embedding_dim
@@ -111,7 +110,7 @@ class CrossAttention(nn.Module):
         self,
         *,
         embedding_dim: int,
-        head_count: Optional[int],
+        head_count: int | None,
         dropout_rate: float,
         use_bias: bool,
         use_rope: bool,
@@ -148,7 +147,7 @@ class CrossAttention(nn.Module):
         self,
         x: torch.Tensor,
         context: torch.Tensor,
-        context_mask: Optional[torch.Tensor] = None,
+        context_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         batch_size, seq_len, emb_dim = x.shape
         _, context_seq_len, _ = context.shape

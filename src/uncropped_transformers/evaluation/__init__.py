@@ -4,9 +4,9 @@ from .rank import Rank, get_rank
 
 __all__ = [
     "FullKeyAccuracy",
+    "MinimumTracesToDisclosure",
+    "Rank",
     "accumulate_ranks",
     "compute_mtd",
-    "MinimumTracesToDisclosure",
     "get_rank",
-    "Rank",
 ]

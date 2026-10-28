@@ -1,7 +1,7 @@
 import argparse
 import logging
 from pathlib import Path
-from typing import Optional, get_args
+from typing import get_args
 
 import numpy as np
 from init_things import OUTPUTS_ROOT
@@ -124,7 +124,7 @@ def main():
 
     dataset_id: DATASET = args.dataset
     partition_id: PARTITION = args.partition
-    dest: Optional[Path] = args.dest
+    dest: Path | None = args.dest
     compute: bool = args.compute
     plot: bool = args.plot
 

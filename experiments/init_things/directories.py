@@ -1,6 +1,5 @@
 import argparse
 from pathlib import Path
-from typing import Dict, Optional
 
 import yaml
 
@@ -42,13 +41,13 @@ def safe_load_yaml(stream):
 PROJ_ROOT = Path(__file__).resolve().parent.parent.parent
 CONFIG_ROOT = PROJ_ROOT / "config"
 DIRECTORY_CONFIG = CONFIG_ROOT / "directories.yaml"
-ASCADV1_FIXED_ROOT: Optional[Path] = None
-ASCADV1_VARIABLE_ROOT: Optional[Path] = None
-ASCADV2_ROOT: Optional[Path] = None
-CHES_CTF_2018_ROOT: Optional[Path] = None
+ASCADV1_FIXED_ROOT: Path | None = None
+ASCADV1_VARIABLE_ROOT: Path | None = None
+ASCADV2_ROOT: Path | None = None
+CHES_CTF_2018_ROOT: Path | None = None
 
-DOWNLOADS_CACHE_ROOT: Optional[Path] = None
-OUTPUTS_ROOT: Optional[Path] = None
+DOWNLOADS_CACHE_ROOT: Path | None = None
+OUTPUTS_ROOT: Path | None = None
 
 
 def append_directory_clargs(p: argparse.ArgumentParser):
@@ -65,7 +64,7 @@ def append_directory_clargs(p: argparse.ArgumentParser):
         )
 
 
-def load_directory_config() -> Dict[str, Path]:
+def load_directory_config() -> dict[str, Path]:
     if not DIRECTORY_CONFIG.exists():
         return dict()
     with open(DIRECTORY_CONFIG) as config_file:
@@ -74,7 +73,7 @@ def load_directory_config() -> Dict[str, Path]:
 
 
 def init_directories(
-    clargs: Optional[Dict[str, str]] = None, config: Optional[Dict[str, str]] = None
+    clargs: dict[str, str] | None = None, config: dict[str, str] | None = None
 ):
     global \
         ASCADV1_FIXED_ROOT, \

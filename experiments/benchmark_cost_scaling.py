@@ -15,7 +15,6 @@ Usage:
 import argparse
 import time
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import torch
@@ -200,7 +199,7 @@ def main():
     parser.add_argument("--dest", type=Path, default=None)
     args = parser.parse_args()
 
-    output_dir: Optional[Path] = args.dest
+    output_dir: Path | None = args.dest
     if output_dir is None:
         output_dir = OUTPUTS_ROOT / "compute_benchmark"
     assert isinstance(output_dir, Path)

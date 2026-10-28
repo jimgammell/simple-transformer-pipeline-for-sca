@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 from torch import nn
@@ -14,7 +14,7 @@ class SelfAttentionBlock(nn.Module):
         self,
         *,
         embedding_dim: int,
-        head_count: Optional[int],
+        head_count: int | None,
         dropout_rate: float,
         use_bias: bool,
         use_rope: bool,
@@ -54,7 +54,7 @@ class SelfAttentionBlock(nn.Module):
             raise ValueError(f"Unsupported feed-forward style: {fnn_style!r}")
 
     def forward(
-        self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attn_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         x = x + self.attn(self.attn_norm(x), attn_mask=attn_mask)
         x = x + self.fnn(self.fnn_norm(x))
@@ -66,7 +66,7 @@ class CrossAttentionBlock(nn.Module):
         self,
         *,
         embedding_dim: int,
-        head_count: Optional[int],
+        head_count: int | None,
         dropout_rate: float,
         use_bias: bool,
         use_rope: bool,
@@ -112,7 +112,7 @@ class CrossAttentionBlock(nn.Module):
         self,
         x: torch.Tensor,
         context: torch.Tensor,
-        context_mask: Optional[torch.Tensor] = None,
+        context_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         x = x + self.attn(
             self.attn_input_norm(x),

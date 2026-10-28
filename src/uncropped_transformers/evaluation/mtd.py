@@ -1,4 +1,5 @@
-from typing import Callable, Dict, List, Literal, Optional
+from collections.abc import Callable
+from typing import Literal
 
 import numpy as np
 import torch
@@ -50,12 +51,12 @@ def _accumulate_ranks(
 
 def accumulate_ranks(
     logits: torch.Tensor,
-    int_vars: Dict[str, torch.Tensor],
+    int_vars: dict[str, torch.Tensor],
     target_preds_to_key_preds: Callable[
-        [NDArray[np.floating], Dict[str, NDArray[np.uint8]]], NDArray[np.floating]
+        [NDArray[np.floating], dict[str, NDArray[np.uint8]]], NDArray[np.floating]
     ],
     attack_count: int = 1000,
-    traces_per_attack: Optional[int] = None,
+    traces_per_attack: int | None = None,
 ) -> NDArray[np.floating]:
     if len(logits.shape) == 2:
         assert all(len(x.shape) == 1 for x in int_vars.values())
@@ -127,11 +128,11 @@ class MinimumTracesToDisclosure(Metric):
     def __init__(
         self,
         target_preds_to_key_preds: Callable[
-            [NDArray[np.floating], Dict[str, NDArray[np.uint8]]], NDArray[np.floating]
+            [NDArray[np.floating], dict[str, NDArray[np.uint8]]], NDArray[np.floating]
         ],
-        int_var_keys: List[str],
+        int_var_keys: list[str],
         attack_count: int = 1000,
-        traces_per_attack: Optional[int] = None,
+        traces_per_attack: int | None = None,
         reduction: REDUCTION = "min",
         **kwargs,
     ):
@@ -149,7 +150,7 @@ class MinimumTracesToDisclosure(Metric):
 
     @torch.inference_mode()
     def update(
-        self, prediction: torch.Tensor, intermediate_variables: Dict[str, torch.Tensor]
+        self, prediction: torch.Tensor, intermediate_variables: dict[str, torch.Tensor]
     ):
         self.preds.append(prediction)
         for int_var_key in self.int_var_keys:

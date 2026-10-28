@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import pandas
@@ -88,7 +88,7 @@ def plot_ascadv1_oracle_leakiness(
 def plot_leakiness_over_time(
     attr: np.ndarray,
     ax: Axes,
-    title: Optional[str] = None,
+    title: str | None = None,
     per_byte_alpha: float = 0.35,
     per_byte_lw: float = 0.4,
     sum_lw: float = 1.2,
@@ -169,7 +169,7 @@ def plot_rank_trajectories(
     rank_over_time: np.ndarray,
     ax: Axes,
     color: str = "blue",
-    label: Optional[str] = None,
+    label: str | None = None,
     per_byte_alpha: float = 0.3,
     worst_case_alpha: float = 0.9,
 ):
@@ -206,7 +206,7 @@ def plot_per_byte_bar(
     values: np.ndarray,
     ax: Axes,
     color: str = "steelblue",
-    label: Optional[str] = None,
+    label: str | None = None,
     **bar_kwargs,
 ):
     """Bar chart of a (byte_count,) array, one bar per byte."""
@@ -219,8 +219,8 @@ def plot_per_byte_bar(
 def plot_mtd(
     run_path: Path,
     ax: Axes,
-    worst_byte_kwargs: Optional[Dict[str, Any]] = None,
-    other_byte_kwargs: Optional[Dict[str, Any]] = None,
+    worst_byte_kwargs: dict[str, Any] | None = None,
+    other_byte_kwargs: dict[str, Any] | None = None,
     **common_kwargs,
 ):
     worst_byte_kwargs = worst_byte_kwargs or dict()
@@ -246,8 +246,8 @@ def plot_training_curves(
     run_path: Path,
     ax: Axes,
     metric_key: str,
-    train_plot_kwargs: Optional[Dict[str, Any]] = None,
-    val_plot_kwargs: Optional[Dict[str, Any]] = None,
+    train_plot_kwargs: dict[str, Any] | None = None,
+    val_plot_kwargs: dict[str, Any] | None = None,
     **common_plot_kwargs,
 ):
     train_plot_kwargs = train_plot_kwargs or dict()

@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from functools import partial
-from typing import Callable, Dict, Literal, Optional, Tuple
+from typing import Literal
 
 import torch
 from torch.utils.data import DataLoader
@@ -19,7 +20,7 @@ class Attributor:
         self.module.eval()
 
     def _get_loss(
-        self, trace: torch.Tensor, target: torch.Tensor, head_idx: Optional[int] = None
+        self, trace: torch.Tensor, target: torch.Tensor, head_idx: int | None = None
     ) -> torch.Tensor:
         logits = self.module.model(trace)
         loss = self.module.compute_loss(logits, target)
@@ -29,7 +30,7 @@ class Attributor:
 
     def compute_gradvis(
         self,
-        batch: Tuple[torch.Tensor, torch.Tensor, Dict[str, torch.Tensor]],
+        batch: tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]],
         smoothing_std: float = 0.0,
         smoothing_count: int = 1,
     ) -> torch.Tensor:
@@ -54,7 +55,7 @@ class Attributor:
 
     def compute_input_x_gradient(
         self,
-        batch: Tuple[torch.Tensor, torch.Tensor, Dict[str, torch.Tensor]],
+        batch: tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]],
     ) -> torch.Tensor:
         _trace, target, _ = self.module.prepare_batch(batch)
         batch_size, *_, feature_count = _trace.shape

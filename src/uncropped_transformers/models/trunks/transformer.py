@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal
 
 import torch
 from torch import nn
@@ -39,7 +39,7 @@ class TransformerTrunk(nn.Module):
         )
 
     def forward(
-        self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attn_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         for transformer_block in self.transformer_blocks:
             x = transformer_block(x, attn_mask=attn_mask)

@@ -1,4 +1,4 @@
-from typing import Annotated, Any, Dict, List, Literal, Optional
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
 
@@ -19,7 +19,7 @@ from uncropped_transformers.training.supervised_lightning_module import (
 
 class DataConfig(BaseModel):
     id: DATASET
-    target_byte: List[int]
+    target_byte: list[int]
     target_variable: str
     preprocessing: PREPROCESSING
     random_roll_scale: Annotated[float, Field(ge=0)]
@@ -45,7 +45,7 @@ class TrainingConfig(BaseModel):
     label_smoothing: Annotated[float, Field(ge=0, lt=1)]
     mixup_alpha: Annotated[float, Field(ge=0)]
     additive_gaussian_noise: Annotated[float, Field(ge=0)]
-    grad_clip_val: Optional[Annotated[float, Field(gt=0)]] = None
+    grad_clip_val: Annotated[float, Field(gt=0)] | None = None
     accumulate_grad_batches: Annotated[int, Field(gt=0)]
     early_stop_metric: str
     early_stop_mode: Literal["min", "max"]
@@ -60,19 +60,19 @@ class MTDConfig(BaseModel):
 
 
 class ModelConfig(BaseModel):
-    grey_box_head: Optional[GREY_BOX_HEAD]
+    grey_box_head: GREY_BOX_HEAD | None
     position_embedding: POSITION_EMBEDDING
     pooling: POOLING
     head: HEAD
     fnn_style: FNN_STYLE
     patch_size: Annotated[int, Field(gt=0)]
     use_fourier_embed: StrictBool
-    fourier_embed_num_bands: Optional[Annotated[int, Field(gt=0)]]
-    fourier_embed_sigma: Optional[Annotated[float, Field(gt=0)]]
+    fourier_embed_num_bands: Annotated[int, Field(gt=0)] | None
+    fourier_embed_sigma: Annotated[float, Field(gt=0)] | None
     embedding_dim: Annotated[int, Field(gt=0)]
     expansion_factor: Annotated[int, Field(gt=0)]
     trunk_blocks: Annotated[int, Field(gt=0)]
-    head_count: Optional[Annotated[int, Field(gt=0)]]
+    head_count: Annotated[int, Field(gt=0)] | None
     input_dropout_rate: Annotated[float, Field(ge=0)]
     input_droppatch_rate: Annotated[float, Field(ge=0)]
     hidden_dropout_rate: Annotated[float, Field(ge=0)]
@@ -107,5 +107,5 @@ class SupervisedTrainingConfig(BaseModel):
     training: TrainingConfig
     mtd: MTDConfig
     model: ModelConfig
-    search_space: Dict[str, Dict[str, ParamConfig]]
-    commit_hash: Optional[str] = None
+    search_space: dict[str, dict[str, ParamConfig]]
+    commit_hash: str | None = None

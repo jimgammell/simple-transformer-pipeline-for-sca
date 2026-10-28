@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List, Optional, Tuple
 
 import torch
 from init_things import directories as _dirs
@@ -105,11 +104,11 @@ def load_torch_dataset(
 
 
 def construct_loaders(
-    train_sets: List[Base_TorchDataset],
-    eval_sets: List[Base_TorchDataset],
+    train_sets: list[Base_TorchDataset],
+    eval_sets: list[Base_TorchDataset],
     batch_size: int = 256,
     num_workers: int = 4,
-) -> Tuple[DataLoader, ...]:
+) -> tuple[DataLoader, ...]:
     common_kwargs = dict(
         batch_size=batch_size,
         num_workers=num_workers,
@@ -127,7 +126,7 @@ def construct_loaders(
 
 
 def load_trained_model(
-    ckpt_path: Path, profiling_set: Optional[Base_TorchDataset] = None
+    ckpt_path: Path, profiling_set: Base_TorchDataset | None = None
 ) -> SupervisedModule:
     assert ckpt_path.exists()
     checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal, Optional, get_args
+from typing import Literal, get_args
 
 import torch
 from torch import nn
@@ -21,19 +21,19 @@ class ModelConfig:
     input_length: int
     output_dim: int
     output_count: int
-    grey_box_head: Optional[GREY_BOX_HEAD]
+    grey_box_head: GREY_BOX_HEAD | None
     position_embedding: POSITION_EMBEDDING
     pooling: POOLING
     head: HEAD
     fnn_style: FNN_STYLE
     patch_size: int
     use_fourier_embed: bool
-    fourier_embed_num_bands: Optional[int]
-    fourier_embed_sigma: Optional[float]
+    fourier_embed_num_bands: int | None
+    fourier_embed_sigma: float | None
     embedding_dim: int
     expansion_factor: int
     trunk_blocks: int
-    head_count: Optional[int]
+    head_count: int | None
     input_dropout_rate: float
     input_droppatch_rate: float
     hidden_dropout_rate: float
@@ -108,19 +108,19 @@ class Model(nn.Module):
         input_length: int,
         output_dim: int,
         output_count: int,
-        grey_box_head: Optional[GREY_BOX_HEAD],
+        grey_box_head: GREY_BOX_HEAD | None,
         position_embedding: POSITION_EMBEDDING,
         pooling: POOLING,
         head: HEAD,
         fnn_style: FNN_STYLE,
         patch_size: int,
         use_fourier_embed: bool,
-        fourier_embed_num_bands: Optional[int],
-        fourier_embed_sigma: Optional[float],
+        fourier_embed_num_bands: int | None,
+        fourier_embed_sigma: float | None,
         embedding_dim: int,
         expansion_factor: int,
         trunk_blocks: int,
-        head_count: Optional[int],
+        head_count: int | None,
         input_dropout_rate: float,
         input_droppatch_rate: float,
         hidden_dropout_rate: float,
@@ -234,7 +234,7 @@ class Model(nn.Module):
                     nn.init.zeros_(mod.bias)
 
     def forward(
-        self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, attn_mask: torch.Tensor | None = None
     ) -> torch.Tensor:
         batch_size, _, seq_len = x.shape
         device = x.device

@@ -2,7 +2,7 @@ import logging
 import random
 import shutil
 from binascii import crc32
-from typing import Any, Dict, Optional
+from typing import Any
 
 import lightning
 import numpy as np
@@ -13,20 +13,20 @@ from . import directories
 from .mpl_constants import DPI, WIDTH
 
 __all__ = [
-    "directories",
-    "WIDTH",
     "DPI",
     "OUTPUTS_ROOT",
     "SEED",
+    "WIDTH",
+    "directories",
+    "init",
     "set_seed",
     "str_to_seed",
-    "init",
 ]
 
 SEED: int = 0
 
 
-def set_seed(seed: Optional[int] = None):
+def set_seed(seed: int | None = None):
     global SEED
     if seed is not None:
         assert isinstance(seed, int) and 0 <= seed < 0xFFFFFFFF
@@ -41,7 +41,7 @@ def str_to_seed(s: str) -> int:
     return (SEED + crc32(s.encode())) & 0xFFFFFFFF
 
 
-def init(clargs: Optional[Dict[str, Any]] = None):
+def init(clargs: dict[str, Any] | None = None):
     logging.basicConfig(level=logging.INFO)
     latex_available = shutil.which("latex") is not None
     if not latex_available:
