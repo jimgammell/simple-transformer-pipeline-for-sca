@@ -157,6 +157,15 @@ Either option should produce the following directory structure expected by evalu
 ├── ...
 ```
 
+## Tests
+
+Install the development dependencies and run the small CPU-only suite from the project directory:
+```bash
+uv pip install -e '.[development]'
+OMP_NUM_THREADS=1 NUMBA_NUM_THREADS=2 pytest -q
+```
+These tests use synthetic traces and do not require datasets or a GPU. The seed check compares short CPU runs in the same environment, not across hardware or software versions.
+
 ## Usage instructions
 
 Entrypoints for running and evaluating experiments are stored in the `./experiments` directory. This directory also contains experiment-specific infrastructure such as random seed initialization, initial PyTorch/Matplotlib configuration, directory structure/initialization, and project-specific utility functions. Our results can be reproduced as follows:
