@@ -1,6 +1,14 @@
+import hashlib
+import importlib.metadata
+import platform
+import shlex
+import subprocess
+import sys
 from pathlib import Path
+from typing import Any
 
 import torch
+import yaml
 from init_things import directories as _dirs
 from torch.utils.data import DataLoader
 
@@ -167,3 +175,98 @@ def load_trained_model(
         strict=True,
     )
     return module
+
+
+def source_root() -> Path:
+    return Path(
+        subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=Path(__file__).resolve().parents[2],
+            text=True,
+        ).strip()
+    )
+
+
+def git_output(root: Path, *args: str) -> str:
+    return subprocess.check_output(["git", *args], cwd=root, text=True)
+
+
+def write_provenance(
+    dest: Path,
+    config: dict[str, Any],
+    *,
+    root: Path | None = None,
+    trial_number: int | None = None,
+) -> None:
+    root = source_root() if root is None else root.resolve()
+    untracked = git_output(
+        root, "ls-files", "--others", "--exclude-standard", "-z"
+    ).split("\0")
+    source = [
+        p
+        for p in untracked
+        if p
+        and (
+            (Path(p).parts[0] in ("src", "experiments") and p.endswith(".py"))
+            or p == "pyproject.toml"
+            or (
+                Path(p).parts[0] in ("config", "configs")
+                and p.endswith((".yaml", ".yml"))
+            )
+        )
+    ]
+    if source:
+        raise ValueError(
+            f"Untracked source cannot be reconstructed; track these files before training: {source}"
+        )
+    provenance_path = dest / "provenance.yaml"
+    diff_path = dest / "source.diff"
+    if provenance_path.exists() or diff_path.exists():
+        if not (provenance_path.exists() and diff_path.exists()):
+            raise ValueError(
+                f"Incomplete original provenance at {dest}; refusing to overwrite it"
+            )
+        return
+    diff = git_output(root, "diff", "HEAD")
+    available = torch.cuda.is_available()
+    argv = [sys.executable, *sys.argv]
+    metadata = {
+        "argv": argv,
+        "command": shlex.join(argv),
+        "cwd": str(Path.cwd()),
+        "python": sys.version,
+        "platform": platform.platform(),
+        "packages": dict(
+            sorted(
+                (d.metadata["Name"], d.version)
+                for d in importlib.metadata.distributions()
+                if d.metadata["Name"]
+            )
+        ),
+        "torch": {
+            "version": str(torch.__version__),
+            "cuda": torch.version.cuda,
+            "hip": torch.version.hip,
+            "cudnn": torch.backends.cudnn.version(),
+            "gpu_available": available,
+            "gpu_names": [
+                torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())
+            ]
+            if available
+            else [],
+        },
+        "source": {
+            "root": str(root),
+            "commit": git_output(root, "rev-parse", "HEAD").strip(),
+            "dirty": bool(git_output(root, "status", "--porcelain")),
+            "diff_sha256": hashlib.sha256(diff.encode()).hexdigest(),
+            "untracked_source_policy": "reject src/experiments Python and config/configs YAML; other untracked files are not captured",
+        },
+        "config_commit": config.get("commit_hash"),
+        "trial_number": trial_number,
+    }
+    dest.mkdir(parents=True, exist_ok=True)
+    with diff_path.open("x") as f:
+        f.write(diff)
+    with provenance_path.open("x") as f:
+        yaml.safe_dump(metadata, f)

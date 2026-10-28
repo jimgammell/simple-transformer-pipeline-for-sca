@@ -1,5 +1,6 @@
 from typing import Annotated, Any, Literal
 
+from lightning.fabric.plugins.precision.precision import _PRECISION_INPUT
 from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
 
 from uncropped_transformers.datasets import DATASET
@@ -52,6 +53,9 @@ class TrainingConfig(BaseModel):
     seed: int
     compile: StrictBool
     num_workers: Annotated[int, Field(ge=0)]
+    precision: _PRECISION_INPUT = "bf16-mixed"
+    cudnn_benchmark: StrictBool = True
+    float32_matmul_precision: Literal["highest", "high", "medium"] = "high"
 
 
 class MTDConfig(BaseModel):

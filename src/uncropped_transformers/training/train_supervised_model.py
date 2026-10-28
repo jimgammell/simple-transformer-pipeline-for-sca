@@ -6,6 +6,7 @@ import lightning
 import pandas as pd
 import torch
 from lightning import LightningModule, Trainer
+from lightning.fabric.plugins.precision.precision import _PRECISION_INPUT
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
 from torch.utils.data import DataLoader
@@ -28,6 +29,7 @@ def train_supervised_model(
     early_stop_metric: str | None = "val_rank",
     early_stop_mode: Literal["min", "max"] = "max",
     aux_callbacks: list[lightning.Callback] | None = None,
+    precision: _PRECISION_INPUT = "bf16-mixed",
 ):
     latest_ckpt_path = dest / "latest.ckpt"
     if early_stop_metric is not None:
@@ -76,7 +78,7 @@ def train_supervised_model(
         logger = CSVLogger(save_dir=dest, name="", version="")
         trainer = Trainer(
             accelerator="gpu",
-            precision="bf16-mixed",
+            precision=precision,
             logger=logger,
             callbacks=callbacks,
             max_steps=total_steps,

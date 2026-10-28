@@ -1,7 +1,6 @@
 import argparse
 import fcntl
 import logging
-import subprocess
 from copy import copy
 from functools import partial
 from pathlib import Path
@@ -11,6 +10,7 @@ import lightning
 import numpy as np
 import optuna
 import pandas
+import torch
 import yaml
 from init_things import SEED, set_seed, str_to_seed
 from init_things.directories import (
@@ -21,7 +21,13 @@ from init_things.directories import (
     safe_load_yaml,
 )
 from torch.utils.data import Dataset, Subset
-from utils.load_things import construct_loaders, load_torch_dataset
+from utils.load_things import (
+    construct_loaders,
+    git_output,
+    load_torch_dataset,
+    source_root,
+    write_provenance,
+)
 from utils.training_config import SupervisedTrainingConfig
 
 from uncropped_transformers.datasets import Base_TorchDataset
@@ -144,6 +150,8 @@ def run_train_model(
     config: SupervisedTrainingConfig,
     aux_callbacks: list[lightning.Callback] | None = None,
 ):
+    torch.backends.cudnn.benchmark = config.training.cudnn_benchmark
+    torch.set_float32_matmul_precision(config.training.float32_matmul_precision)
     set_seed(config.training.seed)
     profiling_set, train_set, val_set = construct_datasets(config)
     train_loader, val_loader = construct_loaders(
@@ -164,6 +172,7 @@ def run_train_model(
         early_stop_metric=config.training.early_stop_metric,
         early_stop_mode=config.training.early_stop_mode,
         aux_callbacks=aux_callbacks,
+        precision=config.training.precision,
     )
 
 
@@ -213,6 +222,7 @@ def _optuna_objective(
     config.training.seed = trial.number
     config = SupervisedTrainingConfig(**config.model_dump())
     _write_or_check_config(trial_dest, config.model_dump(), require_identity=True)
+    write_provenance(trial_dest, config.model_dump(), trial_number=trial.number)
     aux_callbacks = []
     if enable_pruning:
         aux_callbacks.append(PruningCallback(trial, config.training.early_stop_metric))
@@ -260,8 +270,10 @@ def main():
     dest: Path = args.dest
     assert isinstance(dest, Path)
     config_root: Path = args.config_root
-    assert isinstance(config_root, Path) and config_root.exists()
-    config_path = config_root / f"{args.config_file}.yaml"
+    assert isinstance(config_root, Path)
+    config_path = Path(args.config_file).expanduser()
+    if not config_path.is_file():
+        config_path = config_root / f"{args.config_file}.yaml"
     assert config_path.exists()
     dest.mkdir(exist_ok=True, parents=True)
     optuna_study_path: Path | None = args.optuna_study_path
@@ -279,12 +291,11 @@ def main():
         config_kw = safe_load_yaml(f)
     _apply_overrides(config_kw, overrides)
 
-    config_kw["commit_hash"] = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], text=True
-    ).strip()
+    config_kw["commit_hash"] = git_output(source_root(), "rev-parse", "HEAD").strip()
     config = SupervisedTrainingConfig(**config_kw)
     if optuna_study_path is None:
-        _write_or_check_config(dest, config_kw)
+        _write_or_check_config(dest, config.model_dump())
+        write_provenance(dest, config.model_dump())
 
     if optuna_study_path is not None:
         optuna_study_path.parent.mkdir(exist_ok=True, parents=True)
