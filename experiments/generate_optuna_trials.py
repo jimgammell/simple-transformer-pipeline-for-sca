@@ -76,9 +76,9 @@ def main():
 
     study = get_study(
         study_path,
-        study_direction={"min": "minimize", "max": "maximize"}[
-            config.training.early_stop_mode
-        ],
+        study_direction="minimize"
+        if config.training.early_stop_mode == "min"
+        else "maximize",
         sampler_type="qmc",
         seed=args.seed,
     )

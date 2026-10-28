@@ -16,9 +16,9 @@ REDUCTION = Literal["max", "mean", "none"]
 @jit(nopython=True, parallel=True)
 def _accumulate_ranks(
     log_key_probs: NDArray[np.floating],
-    keys: NDArray[np.uint8],
+    keys: NDArray[np.integer],
     indices: NDArray[np.integer],
-) -> NDArray[np.integer]:
+) -> NDArray[np.float64]:
     attack_count, trace_count = indices.shape
     _, byte_count, class_count = log_key_probs.shape
     full_rank_over_time = np.full(
@@ -53,7 +53,7 @@ def accumulate_ranks(
     logits: torch.Tensor,
     int_vars: dict[str, torch.Tensor],
     target_preds_to_key_preds: Callable[
-        [NDArray[np.floating], dict[str, NDArray[np.uint8]]], NDArray[np.floating]
+        [NDArray[np.floating], dict[str, NDArray[np.integer]]], NDArray[np.floating]
     ],
     attack_count: int = 1000,
     traces_per_attack: int | None = None,
@@ -81,14 +81,19 @@ def accumulate_ranks(
     else:
         raise ValueError(f"Expected Tensor or ndarray logits, got: {type(logits)!r}")
     if all(isinstance(x, torch.Tensor) for x in int_vars.values()):
-        int_vars = {k: v.cpu().numpy() for k, v in int_vars.items()}
+        numpy_int_vars: dict[str, NDArray[np.integer]] = {
+            k: v.cpu().numpy() for k, v in int_vars.items()
+        }
     elif all(isinstance(x, np.ndarray) for x in int_vars.values()):
-        pass
+        numpy_int_vars = {}
+        for key, value in int_vars.items():
+            assert isinstance(value, np.ndarray)
+            numpy_int_vars[key] = value
     else:
         raise ValueError(
             f"Expected uniformly Tensor or ndarray intermediate variables, got: { {k: type(v) for k, v in int_vars.items()}!r}"
         )
-    log_key_probs = target_preds_to_key_preds(log_target_probs, int_vars)
+    log_key_probs = target_preds_to_key_preds(log_target_probs, numpy_int_vars)
     if traces_per_attack is None:
         traces_per_attack = logits.shape[0]
     elif traces_per_attack > logits.shape[0]:
@@ -101,7 +106,7 @@ def accumulate_ranks(
             for idx in range(attack_count)
         ]
     )
-    rank_over_time = _accumulate_ranks(log_key_probs, int_vars["key"], indices)
+    rank_over_time = _accumulate_ranks(log_key_probs, numpy_int_vars["key"], indices)
     assert np.isfinite(rank_over_time).all()
     return rank_over_time
 
@@ -125,15 +130,18 @@ def compute_mtd(
 
 
 class MinimumTracesToDisclosure(Metric):
+    preds: list[torch.Tensor]
+    reduction: REDUCTION
+
     def __init__(
         self,
         target_preds_to_key_preds: Callable[
-            [NDArray[np.floating], dict[str, NDArray[np.uint8]]], NDArray[np.floating]
+            [NDArray[np.floating], dict[str, NDArray[np.integer]]], NDArray[np.floating]
         ],
         int_var_keys: list[str],
         attack_count: int = 1000,
         traces_per_attack: int | None = None,
-        reduction: REDUCTION = "min",
+        reduction: REDUCTION = "max",
         **kwargs,
     ):
         super().__init__(**kwargs)

@@ -16,11 +16,26 @@ from uncropped_transformers.training.supervised_lightning_module import Supervis
 def load_numpy_dataset(
     dataset_id: DATASET, partition_id: PARTITION, **kwargs
 ) -> Base_NumpyDataset:
+    if dataset_id not in (
+        "ascadv1-fixed",
+        "ascadv1-variable",
+        "ascadv2",
+        "ches-ctf-2018",
+    ):
+        raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
+    root = {
+        "ascadv1-fixed": _dirs.ASCADV1_FIXED_ROOT,
+        "ascadv1-variable": _dirs.ASCADV1_VARIABLE_ROOT,
+        "ascadv2": _dirs.ASCADV2_ROOT,
+        "ches-ctf-2018": _dirs.CHES_CTF_2018_ROOT,
+    }[dataset_id]
+    if root is None:
+        raise ValueError(f"Dataset root is not configured for {dataset_id!r}")
     if dataset_id == "ascadv1-fixed":
         from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
 
         dataset = ASCADv1_NumpyDataset(
-            root=_dirs.ASCADV1_FIXED_ROOT,
+            root=root,
             partition=partition_id,
             variable_key=False,
             cropped_traces=False,
@@ -31,7 +46,7 @@ def load_numpy_dataset(
         from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
 
         dataset = ASCADv1_NumpyDataset(
-            root=_dirs.ASCADV1_VARIABLE_ROOT,
+            root=root,
             partition=partition_id,
             variable_key=True,
             cropped_traces=False,
@@ -41,17 +56,13 @@ def load_numpy_dataset(
     elif dataset_id == "ascadv2":
         from uncropped_transformers.datasets.ascadv2 import ASCADv2_NumpyDataset
 
-        dataset = ASCADv2_NumpyDataset(
-            root=_dirs.ASCADV2_ROOT, partition=partition_id, **kwargs
-        )
+        dataset = ASCADv2_NumpyDataset(root=root, partition=partition_id, **kwargs)
     elif dataset_id == "ches-ctf-2018":
         from uncropped_transformers.datasets.ches_ctf_2018 import (
             CHESCTF2018_NumpyDataset,
         )
 
-        dataset = CHESCTF2018_NumpyDataset(
-            root=_dirs.CHES_CTF_2018_ROOT, partition=partition_id, **kwargs
-        )
+        dataset = CHESCTF2018_NumpyDataset(root=root, partition=partition_id, **kwargs)
 
     else:
         raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
@@ -61,11 +72,26 @@ def load_numpy_dataset(
 def load_torch_dataset(
     dataset_id: DATASET, partition_id: PARTITION, **kwargs
 ) -> Base_TorchDataset:
+    if dataset_id not in (
+        "ascadv1-fixed",
+        "ascadv1-variable",
+        "ascadv2",
+        "ches-ctf-2018",
+    ):
+        raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
+    root = {
+        "ascadv1-fixed": _dirs.ASCADV1_FIXED_ROOT,
+        "ascadv1-variable": _dirs.ASCADV1_VARIABLE_ROOT,
+        "ascadv2": _dirs.ASCADV2_ROOT,
+        "ches-ctf-2018": _dirs.CHES_CTF_2018_ROOT,
+    }[dataset_id]
+    if root is None:
+        raise ValueError(f"Dataset root is not configured for {dataset_id!r}")
     if dataset_id == "ascadv1-fixed":
         from uncropped_transformers.datasets.ascadv1 import ASCADv1_TorchDataset
 
         dataset = ASCADv1_TorchDataset(
-            root=_dirs.ASCADV1_FIXED_ROOT,
+            root=root,
             partition=partition_id,
             variable_key=False,
             cropped_traces=False,
@@ -76,7 +102,7 @@ def load_torch_dataset(
         from uncropped_transformers.datasets.ascadv1 import ASCADv1_TorchDataset
 
         dataset = ASCADv1_TorchDataset(
-            root=_dirs.ASCADV1_VARIABLE_ROOT,
+            root=root,
             partition=partition_id,
             variable_key=True,
             cropped_traces=False,
@@ -86,17 +112,13 @@ def load_torch_dataset(
     elif dataset_id == "ascadv2":
         from uncropped_transformers.datasets.ascadv2 import ASCADv2_TorchDataset
 
-        dataset = ASCADv2_TorchDataset(
-            root=_dirs.ASCADV2_ROOT, partition=partition_id, **kwargs
-        )
+        dataset = ASCADv2_TorchDataset(root=root, partition=partition_id, **kwargs)
     elif dataset_id == "ches-ctf-2018":
         from uncropped_transformers.datasets.ches_ctf_2018 import (
             CHESCTF2018_TorchDataset,
         )
 
-        dataset = CHESCTF2018_TorchDataset(
-            root=_dirs.CHES_CTF_2018_ROOT, partition=partition_id, **kwargs
-        )
+        dataset = CHESCTF2018_TorchDataset(root=root, partition=partition_id, **kwargs)
 
     else:
         raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
@@ -108,7 +130,7 @@ def construct_loaders(
     eval_sets: list[Base_TorchDataset],
     batch_size: int = 256,
     num_workers: int = 4,
-) -> tuple[DataLoader, ...]:
+) -> list[DataLoader]:
     common_kwargs = dict(
         batch_size=batch_size,
         num_workers=num_workers,

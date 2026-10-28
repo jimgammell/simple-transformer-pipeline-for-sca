@@ -8,6 +8,7 @@ from init_things import OUTPUTS_ROOT
 from init_things.directories import append_directory_clargs
 from init_things.mpl_constants import DPI
 from matplotlib import pyplot as plt
+from numpy.typing import DTypeLike
 from utils.load_things import load_numpy_dataset
 
 from uncropped_transformers.datasets import DATASET, PARTITION
@@ -20,7 +21,7 @@ def run_compute_snr(
     dest: Path,
     chunk_size: int = 1024,
     use_progress_bar: bool = True,
-    dtype: np.dtype = np.float32,
+    dtype: DTypeLike = np.float32,
 ):
     assert dest.exists()
     dataset = load_numpy_dataset(dataset_id, partition_id)

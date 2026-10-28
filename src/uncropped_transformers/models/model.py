@@ -152,6 +152,8 @@ class Model(nn.Module):
         )
 
         if self.config.use_fourier_embed:
+            assert self.config.fourier_embed_num_bands is not None
+            assert self.config.fourier_embed_sigma is not None
             self.fourier_embedding = FourierEmbed(
                 in_dims=1,
                 num_bands=self.config.fourier_embed_num_bands,
@@ -285,6 +287,7 @@ class Model(nn.Module):
         if self.config.head == "tied":
             x = self.heads(x)
         elif self.config.head == "untied":
+            assert isinstance(self.heads, nn.ModuleList)
             x = torch.stack(
                 [
                     head(xp)

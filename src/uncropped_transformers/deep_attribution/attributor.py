@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sized
 from functools import partial
 from typing import Literal
 
@@ -81,16 +81,22 @@ class Attributor:
         show_progress_bar: bool = False,
     ) -> torch.Tensor:
         if show_progress_bar:
-            progress_bar = tqdm(total=len(dataloader.dataset))
+            progress_bar = tqdm(
+                total=len(dataloader.dataset)
+                if isinstance(dataloader.dataset, Sized)
+                else None
+            )
         attrs = None
         old_count = 0
         for batch in dataloader:
             attr = attr_fn(batch)
             if attrs is None:
                 *_, head_count, feature_count = attr.shape
+                dtype = self.module.dtype
+                assert isinstance(dtype, torch.dtype)
                 attrs = torch.zeros(
                     (head_count, feature_count),
-                    dtype=self.module.dtype,
+                    dtype=dtype,
                     device=self.module.device,
                 )
             new_count = old_count + len(attr)
@@ -100,6 +106,8 @@ class Attributor:
             old_count = new_count
             if show_progress_bar:
                 progress_bar.update(len(attr))
+        if attrs is None:
+            raise ValueError("Cannot aggregate attributions from an empty dataloader")
         return attrs
 
     def __call__(

@@ -6,7 +6,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
-    Any,
     Literal,
     get_args,
 )
@@ -29,29 +28,44 @@ TARGET_VARIABLE = Literal["subbytes", "key", "plaintext", "ciphertext"]
 
 @dataclass
 class CHESCTF2018_Config:
-    root: str | Path
+    root: Path
     partition: PARTITION
-    target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2
-    target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes"
+    target_byte: NDArray[np.integer]
+    target_variable: NDArray[np.str_]
+
+    def __init__(
+        self,
+        root: str | Path,
+        partition: PARTITION,
+        target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2,
+        target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes",
+    ):
+        if isinstance(root, str):
+            root = Path(root)
+        self.root = root
+        self.partition = partition
+        if isinstance(target_byte, int):
+            target_byte = [target_byte]
+        self.target_byte = np.array(target_byte)
+        if isinstance(target_variable, str):
+            target_variable = [target_variable]
+        self.target_variable = np.array(target_variable)
+        self.__post_init__()
 
     def __post_init__(self):
-        if isinstance(self.root, str):
-            self.root = Path(self.root)
         assert self.root.exists()
         assert self.partition in get_args(PARTITION)
-        if isinstance(self.target_byte, int):
-            self.target_byte = [self.target_byte]
-        self.target_byte = np.array(self.target_byte)
         assert all(x in get_args(TARGET_BYTE) for x in self.target_byte)
-        if isinstance(self.target_variable, str):
-            self.target_variable = [self.target_variable]
-        self.target_variable = np.array(self.target_variable)
         assert all(x in get_args(TARGET_VARIABLE) for x in self.target_variable)
         self.num_labels = len(self.target_byte) * len(self.target_variable)
         self.num_classes = 256
 
 
 class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
+    traces: NDArray[np.int8] | None
+    keys: NDArray[np.uint8] | None
+    plaintexts: NDArray[np.uint8] | None
+    ciphertexts: NDArray[np.uint8] | None
     int_var_keys = get_args(TARGET_VARIABLE)
 
     def __init__(
@@ -180,7 +194,7 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
     @staticmethod
     def target_preds_to_key_preds(
         target_preds: NDArray[np.floating],
-        intermediate_variables: dict[str, NDArray[np.uint8]],
+        intermediate_variables: dict[str, NDArray[np.integer]],
     ) -> NDArray[np.floating]:
         plaintext = intermediate_variables["plaintext"]
         assert len(target_preds.shape) == len(plaintext.shape) + 1
@@ -193,10 +207,8 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
         return key_preds
 
     def np_getitem(
-        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
-    ) -> tuple[
-        NDArray[np.floating], NDArray[np.integer], dict[str, NDArray[np.integer]]
-    ]:
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[NDArray[np.int8], NDArray[np.integer], dict[str, NDArray[np.uint8]]]:
         if isinstance(_idx, slice):
             _idx = np.arange(*_idx.indices(len(self.trace_indices)))
         elif isinstance(_idx, (int, np.integer)):
@@ -208,6 +220,10 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
         if len(_idx) == 1:
             _idx = _idx[0]
         self.init_data()
+        assert self.traces is not None
+        assert self.keys is not None
+        assert self.plaintexts is not None
+        assert self.ciphertexts is not None
         idx = self.trace_indices[_idx]
         trace = self.traces[idx, :]
         key = self.keys[idx, :]
@@ -225,7 +241,9 @@ class CHESCTF2018_NumpyDataset(Base_NumpyDataset):
         )
         return trace, target, intermediate_variables
 
-    def __getitem__(self, *args, **kwargs) -> Any:
+    def __getitem__(
+        self, *args, **kwargs
+    ) -> tuple[NDArray[np.int8], NDArray[np.integer], dict[str, NDArray[np.uint8]]]:
         return self.np_getitem(*args, **kwargs)
 
     def __repr__(self) -> str:
@@ -255,8 +273,8 @@ class CHESCTF2018_TorchDataset(Base_TorchDataset, CHESCTF2018_NumpyDataset):
         CHESCTF2018_NumpyDataset.__init__(self, **dataset_config)
 
     def __getitem__(
-        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
-    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, NDArray[np.integer]]]:
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
         trace, target, intermediate_variables = CHESCTF2018_NumpyDataset.__getitem__(
             self, _idx
         )

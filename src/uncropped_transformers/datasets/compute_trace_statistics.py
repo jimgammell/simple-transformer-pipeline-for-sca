@@ -1,7 +1,7 @@
 from math import ceil
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import DTypeLike, NDArray
 from tqdm import tqdm
 
 from .base_dataset import Base_NumpyDataset
@@ -11,7 +11,7 @@ def compute_trace_statistics(
     dataset: Base_NumpyDataset,
     chunk_size: int | None = None,
     use_progress_bar: bool = False,
-    dtype: np.dtype = np.float32,
+    dtype: DTypeLike = np.float32,
 ) -> tuple[NDArray[np.floating], ...]:
     row_count = dataset.trace_count
     col_count = dataset.timestep_count

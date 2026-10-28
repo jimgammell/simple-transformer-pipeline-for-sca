@@ -8,7 +8,7 @@ from torchmetrics import Metric
 @jit(nopython=True)
 def _get_rank(
     preds: NDArray[np.floating], targets: NDArray[np.integer]
-) -> NDArray[np.integer]:
+) -> NDArray[np.int64]:
     batch_size, class_count = preds.shape
     ranks = np.full((batch_size,), 0, dtype=np.int64)
     for batch_idx in range(batch_size):

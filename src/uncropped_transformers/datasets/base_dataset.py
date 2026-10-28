@@ -1,5 +1,11 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .ascadv1 import ASCADv1_Config
+    from .ascadv2 import ASCADv2_Config
+    from .ches_ctf_2018 import CHESCTF2018_Config
 
 import h5py
 import numpy as np
@@ -13,35 +19,30 @@ class Base_NumpyDataset(ABC):
     trace_count: int
     timestep_count: int
 
+    @staticmethod
     @abstractmethod
     def target_preds_to_key_preds(
-        self,
-        target: NDArray[np.floating],
-        int_vars: dict[str, NDArray[np.uint8]],
-        byte_idx: int | None = None,
+        target_preds: NDArray[np.floating],
+        intermediate_variables: dict[str, NDArray[np.integer]],
     ) -> NDArray[np.floating]:
         pass
 
     @abstractmethod
     def compute_intermediate_variables(
         self, *args: NDArray[np.integer]
-    ) -> dict[str, NDArray[np.integer]]:
+    ) -> dict[str, NDArray[np.uint8]]:
         pass
 
     @abstractmethod
     def np_getitem(
-        self, _idx: int | Sequence[int]
-    ) -> tuple[
-        NDArray[np.floating], NDArray[np.integer], dict[str, NDArray[np.integer]]
-    ]:
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[NDArray[np.number], NDArray[np.integer], dict[str, NDArray[np.uint8]]]:
         pass
 
     @abstractmethod
     def __getitem__(
-        self, _idx: int | Sequence[int]
-    ) -> tuple[
-        NDArray[np.floating], NDArray[np.integer], dict[str, NDArray[np.integer]]
-    ]:
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[NDArray[np.number], NDArray[np.integer], dict[str, NDArray[np.uint8]]]:
         pass
 
     def __len__(self) -> int:
@@ -55,6 +56,22 @@ class Base_NumpyDataset(ABC):
 
 
 class Base_TorchDataset(ABC, Dataset):
+    timestep_count: int
+    int_var_keys: tuple[str, ...]
+    config: "ASCADv1_Config | ASCADv2_Config | CHESCTF2018_Config"
+
+    if TYPE_CHECKING:
+
+        @staticmethod
+        def target_preds_to_key_preds(
+            target_preds: NDArray[np.floating],
+            intermediate_variables: dict[str, NDArray[np.integer]],
+        ) -> NDArray[np.floating]: ...
+
+        def get_trace_statistics(
+            self, use_progress_bar: bool = False
+        ) -> dict[str, NDArray[np.floating]]: ...
+
     def __init__(
         self,
         *,
@@ -66,7 +83,7 @@ class Base_TorchDataset(ABC, Dataset):
 
     @abstractmethod
     def __getitem__(
-        self, _idx: int | Sequence[int]
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
     ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
         pass
 

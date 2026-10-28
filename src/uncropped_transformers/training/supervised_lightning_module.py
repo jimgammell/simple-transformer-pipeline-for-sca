@@ -22,7 +22,7 @@ from .cosine_decay_lr_scheduler import CosineDecayLRSched
 
 @dataclass
 class SupervisedModuleConfig:
-    model_constructor: Callable[[dict[str, Any]], nn.Module]
+    model_constructor: Callable[..., nn.Module]
     model_kwargs: dict[str, Any]
     leakage_model: LEAKAGE_MODEL
     num_labels: int
@@ -80,7 +80,7 @@ class SupervisedModule(lightning.LightningModule):
     def __init__(
         self,
         *,
-        model_constructor: Callable[[dict[str, Any]], nn.Module],
+        model_constructor: Callable[..., nn.Module],
         model_kwargs: dict[str, Any],
         leakage_model: LEAKAGE_MODEL,
         num_labels: int,  # i.e. how many variables we are predicting
@@ -376,7 +376,7 @@ class SupervisedModule(lightning.LightningModule):
         if isinstance(dataloader, (list, tuple)):
             dataloader = dataloader[0]
         sampler = getattr(dataloader, "sampler", None)
-        if hasattr(sampler, "set_epoch"):
+        if sampler is not None and hasattr(sampler, "set_epoch"):
             sampler.set_epoch(self.current_epoch)
 
     def on_train_epoch_end(self):

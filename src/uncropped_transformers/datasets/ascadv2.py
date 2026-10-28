@@ -1,10 +1,9 @@
 # Adapted from https://github.com/ANSSI-FR/ASCAD/blob/master/ASCAD_generate.py
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
-    Any,
     Literal,
     get_args,
 )
@@ -93,18 +92,20 @@ def extract_raw_dataset(
     trace_dest: Path,
     metadata_dest: Path,
     use_progress_bar: bool = False,
-    exclude_indices: Sequence[int] | None = None,
+    exclude_indices: Iterable[int] | None = None,
     chunk_size: int = 4096,
 ):
     if exclude_indices is None:
-        exclude_indices = set()
+        excluded_indices: set[int] = set()
     else:
-        exclude_indices = set(exclude_indices)
+        excluded_indices = set(exclude_indices)
     row_count = 0
     for datafile in datafiles:
         with h5py.File(datafile, "r") as f:
-            row_count += len(f["traces"])
-    row_count -= len(exclude_indices)
+            traces_dataset = f["traces"]
+            assert isinstance(traces_dataset, h5py.Dataset)
+            row_count += len(traces_dataset)
+    row_count -= len(excluded_indices)
     col_count = 1_000_000
 
     dest_memmap = np.memmap(
@@ -117,29 +118,31 @@ def extract_raw_dataset(
     trace_idx = 0
     for datafile in datafiles:
         with h5py.File(datafile, mode="r") as datafile:
-            n_traces = len(datafile["traces"])
+            traces_dataset = datafile["traces"]
+            assert isinstance(traces_dataset, h5py.Dataset)
+            metadata_dataset = datafile["metadata"]
+            assert isinstance(metadata_dataset, h5py.Dataset)
+            n_traces = len(traces_dataset)
             for chunk_start in range(0, n_traces, chunk_size):
                 chunk_end = min(chunk_start + chunk_size, n_traces)
                 chunk_global_indices = np.arange(
                     trace_idx, trace_idx + (chunk_end - chunk_start)
                 )
                 keep_mask = np.array(
-                    [idx not in exclude_indices for idx in chunk_global_indices]
+                    [idx not in excluded_indices for idx in chunk_global_indices]
                 )
                 n_keep = keep_mask.sum()
                 if n_keep > 0:
-                    trace_chunk = datafile["traces"][chunk_start:chunk_end][keep_mask]
+                    trace_chunk = traces_dataset[chunk_start:chunk_end][keep_mask]
                     dest_memmap[memmap_idx : memmap_idx + n_keep, :] = trace_chunk
                     keys.append(
-                        datafile["metadata"]["key"][chunk_start:chunk_end][keep_mask]
+                        metadata_dataset["key"][chunk_start:chunk_end][keep_mask]
                     )
                     plaintexts.append(
-                        datafile["metadata"]["plaintext"][chunk_start:chunk_end][
-                            keep_mask
-                        ]
+                        metadata_dataset["plaintext"][chunk_start:chunk_end][keep_mask]
                     )
                     masks.append(
-                        datafile["metadata"]["masks"][chunk_start:chunk_end][keep_mask]
+                        metadata_dataset["masks"][chunk_start:chunk_end][keep_mask]
                     )
                     memmap_idx += n_keep
                 trace_idx += chunk_end - chunk_start
@@ -157,29 +160,44 @@ def extract_raw_dataset(
 
 @dataclass
 class ASCADv2_Config:
-    root: str | Path
+    root: Path
     partition: PARTITION
-    target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2
-    target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes"
+    target_byte: NDArray[np.integer]
+    target_variable: NDArray[np.str_]
+
+    def __init__(
+        self,
+        root: str | Path,
+        partition: PARTITION,
+        target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2,
+        target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes",
+    ):
+        if isinstance(root, str):
+            root = Path(root)
+        self.root = root
+        self.partition = partition
+        if isinstance(target_byte, int):
+            target_byte = [target_byte]
+        self.target_byte = np.array(target_byte)
+        if isinstance(target_variable, str):
+            target_variable = [target_variable]
+        self.target_variable = np.array(target_variable)
+        self.__post_init__()
 
     def __post_init__(self):
-        if isinstance(self.root, str):
-            self.root = Path(self.root)
         assert self.root.exists()
         assert self.partition in get_args(PARTITION)
-        if isinstance(self.target_byte, int):
-            self.target_byte = [self.target_byte]
-        self.target_byte = np.array(self.target_byte)
         assert all(x in get_args(TARGET_BYTE) for x in self.target_byte)
-        if isinstance(self.target_variable, str):
-            self.target_variable = [self.target_variable]
-        self.target_variable = np.array(self.target_variable)
         assert all(x in get_args(TARGET_VARIABLE) for x in self.target_variable)
         self.num_labels = len(self.target_byte) * len(self.target_variable)
         self.num_classes = 256
 
 
 class ASCADv2_NumpyDataset(Base_NumpyDataset):
+    traces: NDArray[np.int8] | None
+    keys: NDArray[np.uint8] | None
+    plaintexts: NDArray[np.uint8] | None
+    masks: NDArray[np.uint8] | None
     int_var_keys = get_args(TARGET_VARIABLE)
 
     def __init__(
@@ -258,7 +276,7 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
     @staticmethod
     def target_preds_to_key_preds(
         target_preds: NDArray[np.floating],
-        intermediate_variables: dict[str, NDArray[np.uint8]],
+        intermediate_variables: dict[str, NDArray[np.integer]],
     ) -> NDArray[np.floating]:
         plaintext = intermediate_variables["plaintext"]
         assert len(target_preds.shape) == len(plaintext.shape) + 1
@@ -316,10 +334,8 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
         return intermediate_variables
 
     def np_getitem(
-        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
-    ) -> tuple[
-        NDArray[np.floating], NDArray[np.integer], dict[str, NDArray[np.integer]]
-    ]:
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[NDArray[np.int8], NDArray[np.integer], dict[str, NDArray[np.uint8]]]:
         if isinstance(_idx, slice):
             _idx = np.arange(*_idx.indices(len(self.trace_indices)))
         elif isinstance(_idx, (int, np.integer)):
@@ -331,6 +347,10 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
         if len(_idx) == 1:
             _idx = _idx[0]
         self.init_data()
+        assert self.traces is not None
+        assert self.keys is not None
+        assert self.plaintexts is not None
+        assert self.masks is not None
         idx = self.trace_indices[_idx]
         trace = self.traces[idx, :]
         key = self.keys[idx, :]
@@ -352,7 +372,9 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
         )
         return trace, target, intermediate_variables
 
-    def __getitem__(self, *args, **kwargs) -> Any:
+    def __getitem__(
+        self, *args, **kwargs
+    ) -> tuple[NDArray[np.int8], NDArray[np.integer], dict[str, NDArray[np.uint8]]]:
         return self.np_getitem(*args, **kwargs)
 
     def __repr__(self) -> str:
@@ -382,8 +404,8 @@ class ASCADv2_TorchDataset(Base_TorchDataset, ASCADv2_NumpyDataset):
         ASCADv2_NumpyDataset.__init__(self, **dataset_config)
 
     def __getitem__(
-        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
-    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, NDArray[np.integer]]]:
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
         trace, target, intermediate_variables = ASCADv2_NumpyDataset.__getitem__(
             self, _idx
         )

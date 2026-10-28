@@ -39,10 +39,14 @@ def run_attack_performance_evalutaion(
         accelerator="gpu", precision="bf16-mixed", default_root_dir=None, logger=False
     )
     results = trainer.test(module, dataloaders=attack_loader)
+    if not results:
+        raise ValueError("Testing returned no attack results")
     metrics = {k: np.array(v) for k, v in results[0].items()}
 
     # Retain every attack's rank trajectory, plus per-output summaries.
     outputs = trainer.predict(module, dataloaders=attack_loader)
+    if outputs is None or not outputs:
+        raise ValueError("Prediction returned no attack batches")
     all_byte_logits = torch.cat([o[0] for o in outputs])
     all_int_vars = {k: torch.cat([o[1][k] for o in outputs]) for k in outputs[0][1]}
     mtd_kwargs = module.config.mtd_kwargs

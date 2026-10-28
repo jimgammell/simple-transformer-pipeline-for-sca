@@ -2,7 +2,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
-    Any,
     Literal,
     get_args,
 )
@@ -73,25 +72,40 @@ def repr_target(variable: TARGET_VARIABLE, byte: str | None = None) -> str:
 
 @dataclass
 class ASCADv1_Config:
-    root: str | Path
+    root: Path
     partition: PARTITION
-    target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2
-    target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes"
+    target_byte: NDArray[np.integer]
+    target_variable: NDArray[np.str_]
     variable_key: bool = False
     cropped_traces: bool = True
 
+    def __init__(
+        self,
+        root: str | Path,
+        partition: PARTITION,
+        target_byte: TARGET_BYTE | Sequence[TARGET_BYTE] = 2,
+        target_variable: TARGET_VARIABLE | Sequence[TARGET_VARIABLE] = "subbytes",
+        variable_key: bool = False,
+        cropped_traces: bool = True,
+    ):
+        if isinstance(root, str):
+            root = Path(root)
+        self.root = root
+        self.partition = partition
+        if isinstance(target_byte, int):
+            target_byte = [target_byte]
+        self.target_byte = np.array(target_byte)
+        if isinstance(target_variable, str):
+            target_variable = [target_variable]
+        self.target_variable = np.array(target_variable)
+        self.variable_key = variable_key
+        self.cropped_traces = cropped_traces
+        self.__post_init__()
+
     def __post_init__(self):
-        if isinstance(self.root, str):
-            self.root = Path(self.root)
         assert self.root.exists()
         assert self.partition in get_args(PARTITION)
-        if isinstance(self.target_byte, int):
-            self.target_byte = [self.target_byte]
-        self.target_byte = np.array(self.target_byte)
         assert all(x in get_args(TARGET_BYTE) for x in self.target_byte)
-        if isinstance(self.target_variable, str):
-            self.target_variable = [self.target_variable]
-        self.target_variable = np.array(self.target_variable)
         assert all(x in get_args(TARGET_VARIABLE) for x in self.target_variable)
         assert isinstance(self.variable_key, bool)
         assert isinstance(self.cropped_traces, bool)
@@ -101,6 +115,10 @@ class ASCADv1_Config:
 
 # wrapper around raw data without any PyTorch functionality
 class ASCADv1_NumpyDataset(Base_NumpyDataset):
+    traces: NDArray[np.int8] | None
+    keys: NDArray[np.uint8] | None
+    plaintexts: NDArray[np.uint8] | None
+    masks: NDArray[np.uint8] | None
     int_var_keys = get_args(TARGET_VARIABLE)
 
     def __init__(
@@ -199,7 +217,7 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
     @staticmethod
     def target_preds_to_key_preds(
         target_preds: NDArray[np.floating],
-        intermediate_variables: dict[str, NDArray[np.uint8]],
+        intermediate_variables: dict[str, NDArray[np.integer]],
     ) -> NDArray[np.floating]:
         plaintext = intermediate_variables["plaintext"]
         assert len(target_preds.shape) == len(plaintext.shape) + 1
@@ -258,8 +276,10 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
     def generate_trace_binary_file(self, use_progress_bar: bool = False):
         if not self.binary_trace_filename.exists():
             with h5py.File(self.data_path, "r") as database:
+                traces_dataset = database["traces"]
+                assert isinstance(traces_dataset, h5py.Dataset)
                 convert_hdf5_to_binary(
-                    database["traces"],
+                    traces_dataset,
                     self.binary_trace_filename,
                     indices=self.get_row_indices(h5=True),
                     chunk_size=4096,
@@ -300,14 +320,16 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
                         f"Unsupported partition: {self.config.partition!r}"
                     )
             with h5py.File(self.data_path, "r") as database:
+                metadata_dataset = database["metadata"]
+                assert isinstance(metadata_dataset, h5py.Dataset)
                 self.keys = np.array(
-                    database["metadata"]["key"][indices, ...], dtype=np.uint8
+                    metadata_dataset["key"][indices, ...], dtype=np.uint8
                 )
                 self.plaintexts = np.array(
-                    database["metadata"]["plaintext"][indices, ...], dtype=np.uint8
+                    metadata_dataset["plaintext"][indices, ...], dtype=np.uint8
                 )
                 self.masks = np.array(
-                    database["metadata"]["masks"][indices, ...], dtype=np.uint8
+                    metadata_dataset["masks"][indices, ...], dtype=np.uint8
                 )
 
     def get_trace_statistics(
@@ -363,10 +385,8 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
         return intermediate_variables
 
     def np_getitem(
-        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
-    ) -> tuple[
-        NDArray[np.floating], NDArray[np.integer], dict[str, NDArray[np.integer]]
-    ]:
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[NDArray[np.int8], NDArray[np.integer], dict[str, NDArray[np.uint8]]]:
         if isinstance(_idx, slice):
             _idx = np.arange(*_idx.indices(len(self.trace_indices)))
         elif isinstance(_idx, (int, np.integer)):
@@ -378,6 +398,10 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
         if len(_idx) == 1:
             _idx = _idx[0]
         self.init_data()
+        assert self.traces is not None
+        assert self.keys is not None
+        assert self.plaintexts is not None
+        assert self.masks is not None
         idx = self.trace_indices[_idx]
         trace = self.traces[idx, :]
         key = self.keys[idx, :]
@@ -399,7 +423,9 @@ class ASCADv1_NumpyDataset(Base_NumpyDataset):
         )
         return trace, target, intermediate_variables
 
-    def __getitem__(self, *args, **kwargs) -> Any:
+    def __getitem__(
+        self, *args, **kwargs
+    ) -> tuple[NDArray[np.int8], NDArray[np.integer], dict[str, NDArray[np.uint8]]]:
         return self.np_getitem(*args, **kwargs)
 
     def __repr__(self) -> str:
@@ -431,8 +457,8 @@ class ASCADv1_TorchDataset(Base_TorchDataset, ASCADv1_NumpyDataset):
         ASCADv1_NumpyDataset.__init__(self, **dataset_config)
 
     def __getitem__(
-        self, _idx: int | slice | NDArray[np.integer] | Sequence[int]
-    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, NDArray[np.integer]]]:
+        self, _idx: int | np.integer | slice | NDArray[np.integer] | Sequence[int]
+    ) -> tuple[torch.Tensor, torch.Tensor, dict[str, torch.Tensor]]:
         trace, target, intermediate_variables = ASCADv1_NumpyDataset.__getitem__(
             self, _idx
         )

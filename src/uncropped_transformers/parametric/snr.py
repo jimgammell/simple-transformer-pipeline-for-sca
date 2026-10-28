@@ -1,6 +1,6 @@
 import numba
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import DTypeLike, NDArray
 from tqdm import tqdm
 
 from uncropped_transformers.datasets.base_dataset import Base_NumpyDataset
@@ -63,7 +63,7 @@ def compute_snr(
     dataset: Base_NumpyDataset,
     chunk_size: int = 4096,
     use_progress_bar: bool = False,
-    dtype: np.dtype = np.float32,
+    dtype: DTypeLike = np.float32,
 ) -> dict[str, NDArray[np.floating]]:
     """
     Compute Signal-to-Noise Ratio (SNR) for side-channel analysis.

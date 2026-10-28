@@ -290,9 +290,9 @@ def main():
         optuna_study_path.parent.mkdir(exist_ok=True, parents=True)
         optuna_study = get_study(
             optuna_study_path,
-            study_direction={"min": "minimize", "max": "maximize"}[
-                config.training.early_stop_mode
-            ],
+            study_direction="minimize"
+            if config.training.early_stop_mode == "min"
+            else "maximize",
             sampler_type=optuna_sampler_type,
             enable_pruning=optuna_enable_pruning,
             seed=SEED,

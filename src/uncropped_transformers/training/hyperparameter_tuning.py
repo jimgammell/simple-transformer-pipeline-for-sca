@@ -5,6 +5,7 @@ from typing import Annotated, Any, Literal, get_args
 import lightning
 import numpy as np
 import optuna
+import optuna.storages.journal
 from pydantic import BaseModel, Field, StrictBool
 from scipy.stats import qmc as scipy_qmc
 
@@ -179,9 +180,9 @@ def generate_qmc_trials(
     # sequence stays consistent on re-runs.
     scramble = seed is not None
     if qmc_type == "sobol":
-        engine = scipy_qmc.Sobol(d=d, scramble=scramble, seed=seed)
+        engine = scipy_qmc.Sobol(d=d, scramble=scramble, seed=seed)  # pyright: ignore[reportCallIssue]
     elif qmc_type == "halton":
-        engine = scipy_qmc.Halton(d=d, scramble=scramble, seed=seed)
+        engine = scipy_qmc.Halton(d=d, scramble=scramble, seed=seed)  # pyright: ignore[reportCallIssue]
     else:
         raise ValueError(f"Unknown qmc_type: {qmc_type!r}")
 

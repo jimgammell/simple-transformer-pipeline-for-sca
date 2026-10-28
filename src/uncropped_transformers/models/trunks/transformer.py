@@ -14,7 +14,7 @@ class TransformerTrunk(nn.Module):
         *,
         transformer_blocks: int,
         embedding_dim: int,
-        head_count: int,
+        head_count: int | None,
         dropout_rate: float,
         use_bias: bool,
         use_rope: bool,
