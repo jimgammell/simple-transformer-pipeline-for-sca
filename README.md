@@ -98,27 +98,20 @@ You may download some or all of the following datasets by running the commands b
 The first time a dataset is initialized, our code will run checksum validation, copy traces to a binary file to enable faster dataloading, and cache the per-feature mean and variance on the profiling set. We recommend running the following commands from the project directory to complete this step once before training/evaluation (otherwise dataloader multiprocessing might cause issues):
 - ASCADv1 (fixed key); expected runtime: 30 sec.
 ```bash
-python - <<'PY'
-from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
-ASCADv1_NumpyDataset(root='./datasets/ascadv1_fixed', partition='profile', variable_key=False).get_trace_statistics(use_progress_bar=True)
-ASCADv1_NumpyDataset(root='./datasets/ascadv1_fixed', partition='attack', variable_key=False)
-PY
+bash scripts/preprocess_datasets.sh ascadv1-fixed
 ```
 - ASCADv1 (variable key); expected runtime: 40 min.
 ```bash
-python - <<'PY'
-from uncropped_transformers.datasets.ascadv1 import ASCADv1_NumpyDataset
-ASCADv1_NumpyDataset(root='./datasets/ascadv1_variable', partition='profile', variable_key=True).get_trace_statistics(use_progress_bar=True)
-ASCADv1_NumpyDataset(root='./datasets/ascadv1_variable', partition='attack', variable_key=True)
-PY
+bash scripts/preprocess_datasets.sh ascadv1-variable
 ```
 - CHES-CTF-2018; expected runtime: 3 min.
 ```bash
-python - <<'PY'
-from uncropped_transformers.datasets.ches_ctf_2018 import CHESCTF2018_NumpyDataset
-CHESCTF2018_NumpyDataset(root='./datasets/ches_ctf_2018', partition='profile').get_trace_statistics(use_progress_bar=True)
-CHESCTF2018_NumpyDataset(root='./datasets/ches_ctf_2018', partition='attack')
-PY
+bash scripts/preprocess_datasets.sh ches-ctf-2018
+```
+
+An optional second argument specifies the dataset root, for example:
+```bash
+bash scripts/preprocess_datasets.sh ascadv2 /path/to/dataset
 ```
 
 ### Downloading pretrained models
@@ -156,15 +149,6 @@ Either option should produce the following directory structure expected by evalu
 ./src/
 ├── ...
 ```
-
-## Tests
-
-Install the development dependencies and run the small CPU-only suite from the project directory:
-```bash
-uv pip install -e '.[development]'
-OMP_NUM_THREADS=1 NUMBA_NUM_THREADS=2 pytest -q
-```
-These tests use synthetic traces and do not require datasets or a GPU. The seed check compares short CPU runs in the same environment, not across hardware or software versions.
 
 ## Usage instructions
 
