@@ -9,7 +9,7 @@ With fixed input_length, increasing patch_count shrinks patch_size: the transfor
 sees a longer sequence (more FLOPs) but the patchifier projection has fewer parameters.
 
 Usage:
-    python experiments/benchmark_transformer_compute.py [--output-dir PATH]
+    python experiments/benchmark_cost_scaling.py [--dest PATH]
 """
 
 from typing import Optional
@@ -54,7 +54,6 @@ def build_model(patch_count: int, layer_count: int, embedding_dim: int) -> Model
         output_dim=OUTPUT_DIM,
         output_count=OUTPUT_COUNT,
         grey_box_head=None,
-        trunk='transformer',
         position_embedding='rope',
         pooling='token',
         head='tied',
@@ -66,10 +65,6 @@ def build_model(patch_count: int, layer_count: int, embedding_dim: int) -> Model
         embedding_dim=embedding_dim,
         expansion_factor=EXPANSION_FACTOR,
         trunk_blocks=layer_count,
-        register_tokens=0,
-        perceiver_latent_dim=None,
-        perceiver_self_attn_per_cross_attn_blocks=None,
-        perceiver_cross_attn_head_count=None,
         head_count=None,  # defaults to embedding_dim // 64
         input_dropout_rate=0.0,
         input_droppatch_rate=0.0,
@@ -193,11 +188,11 @@ def _fmt(r: dict) -> str:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        '--output-dir', type=Path, default=None
+        '--dest', type=Path, default=None
     )
     args = parser.parse_args()
 
-    output_dir: Optional[Path] = args.output_dir
+    output_dir: Optional[Path] = args.dest
     if output_dir is None:
         output_dir = OUTPUTS_ROOT / 'compute_benchmark'
     assert isinstance(output_dir, Path)

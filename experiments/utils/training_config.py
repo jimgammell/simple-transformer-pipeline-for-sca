@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, StrictBool, field_validator, model_valida
 from uncropped_transformers.datasets import DATASET
 from uncropped_transformers.training.supervised_lightning_module import PREPROCESSING, LEAKAGE_MODEL
 from uncropped_transformers.training.hyperparameter_tuning import ParamConfig
-from uncropped_transformers.models.model import GREY_BOX_HEAD, TRUNK, POSITION_EMBEDDING, POOLING, HEAD, FNN_STYLE
+from uncropped_transformers.models.model import GREY_BOX_HEAD, POSITION_EMBEDDING, POOLING, HEAD, FNN_STYLE
 
 
 class DataConfig(BaseModel):
@@ -52,12 +52,11 @@ class MTDConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     grey_box_head: Optional[GREY_BOX_HEAD]
-    trunk: TRUNK
     position_embedding: POSITION_EMBEDDING
     pooling: POOLING
     head: HEAD
     fnn_style: FNN_STYLE
-    patch_size: Optional[Annotated[int, Field(gt=0)]]
+    patch_size: Annotated[int, Field(gt=0)]
     use_fourier_embed: StrictBool
     fourier_embed_num_bands: Optional[Annotated[int, Field(gt=0)]]
     fourier_embed_sigma: Optional[Annotated[float, Field(gt=0)]]
@@ -65,14 +64,10 @@ class ModelConfig(BaseModel):
     expansion_factor: Annotated[int, Field(gt=0)]
     trunk_blocks: Annotated[int, Field(gt=0)]
     head_count: Optional[Annotated[int, Field(gt=0)]]
-    register_tokens: Annotated[int, Field(ge=0)]
     input_dropout_rate: Annotated[float, Field(ge=0)]
     input_droppatch_rate: Annotated[float, Field(ge=0)]
     hidden_dropout_rate: Annotated[float, Field(ge=0)]
     use_bias: StrictBool
-    perceiver_latent_dim: Optional[Annotated[int, Field(gt=0)]]
-    perceiver_self_attn_per_cross_attn_blocks: Optional[Annotated[int, Field(gt=0)]]
-    perceiver_cross_attn_head_count: Optional[Annotated[int, Field(gt=0)]]
     leakage_model: LEAKAGE_MODEL
 
     @model_validator(mode='after')
@@ -83,16 +78,6 @@ class ModelConfig(BaseModel):
         else:
             assert self.fourier_embed_num_bands is None, 'fourier_embed_num_bands must be null when use_fourier_embed=False'
             assert self.fourier_embed_sigma is None, 'fourier_embed_sigma must be null when use_fourier_embed=False'
-        if self.trunk == 'perceiver':
-            assert self.perceiver_latent_dim is not None, 'perceiver_latent_dim required when trunk=perceiver'
-            assert self.perceiver_self_attn_per_cross_attn_blocks is not None, 'perceiver_self_attn_per_cross_attn_blocks required when trunk=perceiver'
-            if self.perceiver_cross_attn_head_count is not None:
-                assert self.perceiver_latent_dim % self.perceiver_cross_attn_head_count == 0, \
-                    f'perceiver_latent_dim ({self.perceiver_latent_dim}) must be divisible by perceiver_cross_attn_head_count ({self.perceiver_cross_attn_head_count})'
-        else:
-            assert self.perceiver_latent_dim is None, 'perceiver_latent_dim must be null when trunk != perceiver'
-            assert self.perceiver_self_attn_per_cross_attn_blocks is None, 'perceiver_self_attn_per_cross_attn_blocks must be null when trunk != perceiver'
-            assert self.perceiver_cross_attn_head_count is None, 'perceiver_cross_attn_head_count must be null when trunk != perceiver'
         if self.head_count is not None:
             assert self.embedding_dim % self.head_count == 0, \
                 f'embedding_dim ({self.embedding_dim}) must be divisible by head_count ({self.head_count})'

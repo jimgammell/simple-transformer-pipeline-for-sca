@@ -1,2 +1,1 @@
 from .snr import compute_snr
-from .gaussian_template_attack import GaussianTemplateAttack

@@ -51,18 +51,11 @@ def construct_datasets(config: SupervisedTrainingConfig) -> Tuple[Dataset, ...]:
         target_byte=config.data.target_byte,
         target_variable=config.data.target_variable
     )
-    attack_set = load_torch_dataset(
-        config.data.id,
-        'attack',
-        target_byte=config.data.target_byte,
-        target_variable=config.data.target_variable
-    )
     indices = np.random.default_rng(seed=str_to_seed('data_partition')).permutation(len(profiling_set))
     val_len = int(len(indices)*config.data.val_prop)
     train_set = Subset(copy(profiling_set), indices=indices[:-val_len])
     val_set = Subset(copy(profiling_set), indices=indices[-val_len:])
-    test_set = copy(attack_set)
-    return profiling_set, attack_set, train_set, val_set, test_set
+    return profiling_set, train_set, val_set
 
 def construct_module(profiling_set: Base_TorchDataset, config: SupervisedTrainingConfig) -> SupervisedModule:
     module = SupervisedModule(
@@ -75,7 +68,6 @@ def construct_module(profiling_set: Base_TorchDataset, config: SupervisedTrainin
                 profiling_set.config.num_labels
             ),
             grey_box_head=config.model.grey_box_head,
-            trunk=config.model.trunk,
             position_embedding=config.model.position_embedding,
             pooling=config.model.pooling,
             head=config.model.head,
@@ -88,14 +80,10 @@ def construct_module(profiling_set: Base_TorchDataset, config: SupervisedTrainin
             expansion_factor=config.model.expansion_factor,
             trunk_blocks=config.model.trunk_blocks,
             head_count=config.model.head_count,
-            register_tokens=config.model.register_tokens,
             input_dropout_rate=config.model.input_dropout_rate,
             input_droppatch_rate=config.model.input_droppatch_rate,
             hidden_dropout_rate=config.model.hidden_dropout_rate,
             use_bias=config.model.use_bias,
-            perceiver_latent_dim=config.model.perceiver_latent_dim,
-            perceiver_self_attn_per_cross_attn_blocks=config.model.perceiver_self_attn_per_cross_attn_blocks,
-            perceiver_cross_attn_head_count=config.model.perceiver_cross_attn_head_count
         ),
         leakage_model=config.model.leakage_model,
         num_labels=profiling_set.config.num_labels,
@@ -129,15 +117,14 @@ def run_train_model(
         aux_callbacks: Optional[List[lightning.Callback]] = None
 ):
     set_seed(config.training.seed)
-    profiling_set, attack_set, train_set, val_set, test_set = construct_datasets(config)
-    train_loader, val_loader, test_loader = construct_loaders([train_set], [val_set, test_set], batch_size=config.training.batch_size, num_workers=config.training.num_workers)
+    profiling_set, train_set, val_set = construct_datasets(config)
+    train_loader, val_loader = construct_loaders([train_set], [val_set], batch_size=config.training.batch_size, num_workers=config.training.num_workers)
     training_module = construct_module(profiling_set, config)
     train_supervised_model(
         dest=dest,
         training_module=training_module,
         train_loader=train_loader,
         val_loader=val_loader,
-        test_loader=test_loader,
         total_steps=config.training.total_steps,
         grad_clip_val=config.training.grad_clip_val,
         accumulate_grad_batches=config.training.accumulate_grad_batches,
@@ -145,6 +132,26 @@ def run_train_model(
         early_stop_mode=config.training.early_stop_mode,
         aux_callbacks=aux_callbacks
     )
+
+def _write_or_check_config(dest: Path, config_kw: Dict[str, Any], *, require_identity: bool = False) -> None:
+    config_path = dest / 'config.yaml'
+    current_config = config_kw.copy()
+    current_hash = current_config.pop('commit_hash', None)
+    if config_path.exists():
+        with open(config_path, 'r') as f:
+            existing_config = yaml.safe_load(f)
+        existing_hash = existing_config.pop('commit_hash', None)
+        if existing_hash != current_hash:
+            logging.warning(f'Resuming trial with a different commit hash. Current hash: {current_hash}. Existing hash: {existing_hash}.')
+        if current_config != existing_config:
+            raise ValueError(f'Configuration mismatch at {config_path}; refusing to resume with a different configuration.')
+    else:
+        if require_identity and dest.exists() and any(dest.iterdir()):
+            raise ValueError(f'Occupied trial destination {dest} has no config.yaml; refusing to resume without configuration identity.')
+        dest.mkdir(exist_ok=True, parents=True)
+        with open(config_path, 'w') as f:
+            yaml.safe_dump(config_kw, f)
+
 
 def _optuna_objective(
         trial: optuna.Trial,
@@ -154,13 +161,16 @@ def _optuna_objective(
         use_trial_subdir: bool = True
 ) -> float:
     trial_dest = dest / f'trial_{trial.number}' if use_trial_subdir else dest
-    config.training.seed = trial.number
+    config = config.model_copy(deep=True)
     for field_key, field_search_space in config.search_space.items():
         new_hparams = sample_hparams(trial, field_search_space)
         assert hasattr(config, field_key)
         for k, v in new_hparams.items():
             assert hasattr(getattr(config, field_key), k)
             setattr(getattr(config, field_key), k, v)
+    config.training.seed = trial.number
+    config = SupervisedTrainingConfig(**config.model_dump())
+    _write_or_check_config(trial_dest, config.model_dump(), require_identity=True)
     aux_callbacks = []
     if enable_pruning:
         aux_callbacks.append(PruningCallback(trial, config.training.early_stop_metric))
@@ -176,7 +186,7 @@ def _optuna_objective(
     return objective
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description='Train or tune on profiling data with held-out validation; attack evaluation is separate.')
     parser.add_argument('--config-file', required=True, type=str)
     parser.add_argument('--dest', required=True, type=Path)
     parser.add_argument('--config-root', type=Path, default=CONFIG_ROOT)
@@ -215,20 +225,9 @@ def main():
     _apply_overrides(config_kw, overrides)
 
     config_kw['commit_hash'] = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
-    config_path = dest / 'config.yaml'
-    if config_path.exists():
-        with open(config_path, 'r') as f:
-            existing_config = yaml.safe_load(f)
-        existing_hash = existing_config.pop('commit_hash', None)
-        current_hash = config_kw.pop('commit_hash', None)
-        if existing_hash != current_hash:
-            logging.warning(f'Resuming trial with a different commit hash. Current hash: {current_hash}. Existing hash: {existing_hash}.')
-        assert config_kw == existing_config
-        config_kw['commit_hash'] = current_hash
-    else:
-        with open(config_path, 'w') as f:
-            yaml.dump(config_kw, f)
     config = SupervisedTrainingConfig(**config_kw)
+    if optuna_study_path is None:
+        _write_or_check_config(dest, config_kw)
 
     if optuna_study_path is not None:
         optuna_study_path.parent.mkdir(exist_ok=True, parents=True)

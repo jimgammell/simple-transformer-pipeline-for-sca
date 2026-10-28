@@ -78,15 +78,16 @@ class SupervisedModule(lightning.LightningModule):
             weight_decay: float,
             label_smoothing: float,
             mtd_kwargs: Dict[str, Any],
-            trace_statistics: Dict[str, np.ndarray],
+            trace_statistics: Optional[Dict[str, np.ndarray]] = None,
             additive_gaussian_noise: float,
             mixup_alpha: float,
             preprocessing: PREPROCESSING,
             random_roll_scale: float,
             random_lpf_scale: float,
+            checkpoint_statistics: Optional[Dict[str, torch.Tensor]] = None,
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=['trace_statistics'])
+        self.save_hyperparameters(ignore=['trace_statistics', 'checkpoint_statistics'])
         self.config = SupervisedModuleConfig(**self.hparams)
         self.model: nn.Module = self.config.model_constructor(output_dim=self.config.num_classes, **self.config.model_kwargs)
         assert isinstance(self.model, nn.Module)
@@ -98,10 +99,17 @@ class SupervisedModule(lightning.LightningModule):
             self.logits_to_byte_logits = nn.Identity()
         else:
             assert False
-        self.register_buffer('trace_mean', torch.from_numpy(trace_statistics['mean']).float(), persistent=False)
-        self.register_buffer('trace_std', torch.from_numpy(trace_statistics['var']).float().sqrt() + 1e-6, persistent=False)
-        self.register_buffer('trace_min', torch.from_numpy(trace_statistics['min']).float(), persistent=False)
-        self.register_buffer('trace_rng', torch.from_numpy(trace_statistics['max'] - trace_statistics['min']).float() + 1e-6, persistent=False)
+        if checkpoint_statistics is None:
+            if trace_statistics is None:
+                raise ValueError('Provide training trace_statistics or checkpoint_statistics.')
+            checkpoint_statistics = dict(
+                trace_mean=torch.from_numpy(trace_statistics['mean']).float(),
+                trace_std=torch.from_numpy(trace_statistics['var']).float().sqrt() + 1e-6,
+                trace_min=torch.from_numpy(trace_statistics['min']).float(),
+                trace_rng=torch.from_numpy(trace_statistics['max'] - trace_statistics['min']).float() + 1e-6,
+            )
+        for name in ('trace_mean', 'trace_std', 'trace_min', 'trace_rng'):
+            self.register_buffer(name, checkpoint_statistics[name].detach().clone(), persistent=True)
 
         self.metrics = MetricCollection({
             **{

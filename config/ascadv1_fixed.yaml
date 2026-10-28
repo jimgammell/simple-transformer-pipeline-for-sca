@@ -30,7 +30,6 @@ mtd: # settings for the minimum traces to disclosure metric
 model: # transformer architecture hyperparameters
   grey_box_head: null # leave at null, other settings broken
   leakage_model: id # which leakage model to use -- identity, bits, etc.
-  trunk: transformer # leave at transformer, other settings broken
   position_embedding: rope # which position embedding algorithm to use, ROPE seems best
   pooling: token # how to condense the transformer output sequence into per-byte logits, token seems best
   head: tied # whether to have a shared to-logits projection or 1 projection per byte, shared seems fine
@@ -43,14 +42,10 @@ model: # transformer architecture hyperparameters
   expansion_factor: 4 # dimension expansion factor in the transformer MLP blocks
   trunk_blocks: 8 # number of transformer layers
   head_count: null # number of multiheaded self attention heads, leave null to auto-assign reasonable value
-  register_tokens: 0 # leave disabled, broken
   input_dropout_rate: 0.14 # dropout rate applied directly to trace before feeding to transformer
   input_droppatch_rate: 0. # leave disabled, incompatible with flash attention and makes training way slower
   hidden_dropout_rate: 0.16 # dropout rate applied within transformer blocks
   use_bias: false # whether to have biases on the linear projections of the transformer MLPs, etc. Unnecessary, the LayerNorms already have these. Most people disable.
-  perceiver_latent_dim: null # leave disabled, broken
-  perceiver_self_attn_per_cross_attn_blocks: null # leave disabled, broken
-  perceiver_cross_attn_head_count: null # leave disabled, broken
 search_space: # search spaces for hyperparameter tuning. The names/meanings/nesting here are the same as above, defining a variable here means it will be part of the search.
   training:
     base_lr:

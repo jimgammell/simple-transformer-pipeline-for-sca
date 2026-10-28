@@ -1,25 +1,13 @@
 from pathlib import Path
-from typing import Optional, Dict, Any, List, get_args
+from typing import Optional, Dict, Any
 
-import colorcet
 import pandas
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 import numpy as np
-from scipy.stats import spearmanr
 
-from uncropped_transformers.datasets import PARTITION
+
 from uncropped_transformers.datasets.ascadv1 import repr_target as ascadv1_repr_target
-
-def add_dline(
-        ax: Axes,
-        **kwargs
-):
-    xmin, xmax = ax.get_xlim()
-    ymin, ymax = ax.get_ylim()
-    low = max(xmin, ymin)
-    high = min(xmax, ymax)
-    ax.plot((low, high), (low, high), **kwargs)
 
 def plot_ascadv1_oracle_leakiness(
         snr_dir: Path,
@@ -94,36 +82,6 @@ def plot_leakiness_over_time(
     ax.set_ylabel('Estimated leakiness')
     if title is not None:
         ax.set_title(title)
-
-
-def plot_wb_scatterplots(
-        attr: np.ndarray,
-        oracle: np.ndarray,
-        axes,
-        subsample: int = 5,
-        color: str = 'royalblue',
-):
-    """4×4 grid of per-byte estimated-vs-oracle scatterplots.
-
-    Args:
-        attr:   (byte_count, feature_count) estimated leakiness
-        oracle: (byte_count, feature_count) oracle (white-box) leakiness
-        axes:   array of Axes with shape (4, 4) or flat length >= byte_count
-        subsample: keep every nth point to limit file size
-    """
-    flat_axes = np.array(axes).flatten()
-    byte_count = attr.shape[0]
-    for byte_idx in range(byte_count):
-        ax = flat_axes[byte_idx]
-        x = oracle[byte_idx, ::subsample]
-        y = attr[byte_idx, ::subsample]
-        ax.scatter(x, y, s=0.5, alpha=0.3, color=color, rasterized=True, linewidths=0)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_title(f'byte {byte_idx}', fontsize=7)
-        ax.set_xlabel('Oracle leakiness', fontsize=6)
-        ax.set_ylabel('Estimated', fontsize=6)
-        ax.tick_params(labelsize=5)
 
 
 def plot_wb_comparison_grid(
@@ -203,8 +161,8 @@ def plot_mtd(
 ):
     worst_byte_kwargs = worst_byte_kwargs or dict()
     other_byte_kwargs = other_byte_kwargs or dict()
-    attack_metrics = np.load(run_path / 'attack_metrics.npz', allow_pickle=True)
-    rank_over_time = attack_metrics['rank_over_time']
+    attack_metrics = np.load(run_path / 'attack_metrics.npz', allow_pickle=False)
+    rank_over_time = attack_metrics['guessing_entropy']
     byte_count = rank_over_time.shape[0]
     traces_seen = np.arange(1, rank_over_time.shape[1] + 1)
     _worst_byte_kwargs = dict(
@@ -257,84 +215,3 @@ def plot_training_curves(
     _val_plot_kwargs.update(val_plot_kwargs)
     ax.plot(train_steps, train_metric, **_train_plot_kwargs)
     ax.plot(val_steps, val_metric, **_val_plot_kwargs)
-
-def plot_occlusion_test(
-        occlusion_trace_path: Path,
-        ax: Axes,
-        features_per_trace: int = 1,
-        **plot_kwargs
-):
-    occlusion_trace = np.load(occlusion_trace_path)
-    occluded_features = np.linspace(0, features_per_trace, len(occlusion_trace)+1)[1:]
-    _plot_kwargs = dict(
-        color='blue',
-        linestyle='-',
-        linewidth=0.2,
-        rasterized=True,
-        marker='.',
-        markersize=3
-    )
-    _plot_kwargs.update(plot_kwargs)
-    ax.plot(occluded_features, occlusion_trace, **_plot_kwargs)
-
-def plot_template_attack_test(
-        src: Path,
-        ax: Axes,
-        **plot_kwargs
-):
-    data = np.load(src, allow_pickle=True)
-    mtd = data['mtd']
-    rank_over_time = data['rank_over_time']
-    byte_count, trace_count = rank_over_time.shape
-    traces_seen = np.arange(1, trace_count + 1)
-    _plot_kwargs = dict(
-        color='blue',
-        rasterized=True
-    )
-    _plot_kwargs.update(plot_kwargs)
-    for byte_idx in range(byte_count):
-        ax.plot(traces_seen, rank_over_time[byte_idx, :], linestyle=':', linewidth=0.2, **_plot_kwargs)
-    ax.plot(traces_seen, rank_over_time.max(axis=0), linestyle='-', alpha=0.5, **_plot_kwargs)
-
-def plot_white_box_agreement(
-        black_box_src: Path,
-        white_box_src: Path,
-        white_box_illus_ax: Axes,
-        oracle_agreement_ax: Axes,
-        var_axes: Axes,
-):
-    black_box_leakiness = np.load(black_box_src)
-    white_box_leakiness = {partition: dict() for partition in get_args(PARTITION)}
-    for partition in get_args(PARTITION):
-        for file in white_box_src.iterdir():
-            if not file.name.endswith('.npy'):
-                continue
-            var_name, partition_name, _ = file.name.split('.')
-            if not partition_name == partition:
-                continue
-            if not var_name in {'p__xor__k__xor__r_in', 'r_in', 'subbytes__xor__r_out', 'r_out', 'subbytes__xor__r', 'r'}:
-                continue
-            var_leakiness = np.load(file)
-            white_box_leakiness[partition][var_name] = var_leakiness
-    for var_name, var_leakiness in white_box_leakiness['attack'].items():
-        if len(var_leakiness) == 16:
-            var_leakiness = var_leakiness[2, :]
-        elif len(var_leakiness) == 1:
-            var_leakiness = var_leakiness[0, :]
-        else:
-            assert False
-        white_box_illus_ax.plot(var_leakiness, label=var_name, linestyle='-', linewidth=0.2, rasterized=True)
-    white_box_assessment = sum(white_box_leakiness['attack'].values())
-    oracle_assessment = sum(white_box_leakiness['profile'].values())
-    for byte_idx in range(16):
-        print(f'Byte idx: {byte_idx}')
-        print(f'\tAgreement between profile + attack oracle: {spearmanr(white_box_assessment[byte_idx, :], oracle_assessment[byte_idx, :]).statistic}')
-        print(f'\tAgreement between black box + attack oracle: {spearmanr(white_box_assessment[byte_idx, :], black_box_leakiness[byte_idx, :]).statistic}')
-    #oracle_agreement_ax.plot(white_box_assessment, black_box_assessment, color='red', marker='.', linestyle='none', markersize=1, alpha=0.1, rasterized=True)
-    #oracle_agreement_ax.plot(white_box_assessment, oracle_assessment, color='blue', marker='.', linestyle='none', markersize=1, alpha=0.1, rasterized=True)
-    oracle_agreement_ax.plot(white_box_assessment[2, :], black_box_leakiness[2, :], color='blue', linestyle='none', marker='.', markersize=1, rasterized=True)
-    for (var_name, var_leakiness), var_ax in zip(white_box_leakiness['attack'].items(), var_axes.flatten()):
-        var_ax.plot(var_leakiness[2, :] if len(var_leakiness) > 1 else var_leakiness[0, :], black_box_leakiness[2, :], color='blue', marker='.', linestyle='none', markersize=1, alpha=0.1, rasterized=True)
-        var_ax.set_xscale('log')
-        var_ax.set_yscale('log')
-        var_ax.set_title(var_name, fontsize=6)

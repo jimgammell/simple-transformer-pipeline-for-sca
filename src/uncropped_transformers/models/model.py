@@ -9,12 +9,7 @@ from .building_blocks.feature_preprocessing import FourierEmbed, Patchifier
 from .building_blocks.pooling import AttentionPool, AveragePool, TokenPool
 from .building_blocks.grey_box_heads import ASCADv1Head, ASCADv2Head
 from .trunks.transformer import TransformerTrunk
-from .trunks.perceiver import PerceiverTrunk
 
-TRUNK = Literal[
-    'transformer',
-    'perceiver'
-]
 POSITION_EMBEDDING = Literal[
     'learned',
     'sinusoidal',
@@ -44,12 +39,11 @@ class ModelConfig:
     output_dim: int
     output_count: int
     grey_box_head: Optional[GREY_BOX_HEAD]
-    trunk: TRUNK
     position_embedding: POSITION_EMBEDDING
     pooling: POOLING
     head: HEAD
     fnn_style: FNN_STYLE
-    patch_size: Optional[int]
+    patch_size: int
     use_fourier_embed: bool
     fourier_embed_num_bands: Optional[int]
     fourier_embed_sigma: Optional[float]
@@ -57,14 +51,10 @@ class ModelConfig:
     expansion_factor: int
     trunk_blocks: int
     head_count: Optional[int]
-    register_tokens: int
     input_dropout_rate: float
     input_droppatch_rate: float
     hidden_dropout_rate: float
     use_bias: bool
-    perceiver_latent_dim: Optional[int]
-    perceiver_self_attn_per_cross_attn_blocks: Optional[int]
-    perceiver_cross_attn_head_count: Optional[int]
 
     def __post_init__(self):
         assert isinstance(self.input_length, int) and self.input_length > 0
@@ -80,18 +70,13 @@ class ModelConfig:
             assert self.output_count == 18
         else:
             assert self.grey_box_head is None
-        assert self.trunk in get_args(TRUNK)
         assert self.position_embedding in get_args(POSITION_EMBEDDING)
         assert self.pooling in get_args(POOLING)
         assert self.head in get_args(HEAD)
         assert self.fnn_style in get_args(FNN_STYLE)
         if self.pooling == 'average':
             assert self.head == 'untied'
-        if self.patch_size is not None:
-            assert isinstance(self.patch_size, int) and self.patch_size > 0 and self.input_length % self.patch_size == 0
-            self.use_patchifier = True
-        else:
-            self.use_patchifier = False
+        assert isinstance(self.patch_size, int) and self.patch_size > 0 and self.input_length % self.patch_size == 0
         assert isinstance(self.use_fourier_embed, bool)
         if self.use_fourier_embed:
             assert isinstance(self.fourier_embed_num_bands, int) and self.fourier_embed_num_bands > 0
@@ -104,21 +89,10 @@ class ModelConfig:
         assert isinstance(self.trunk_blocks, int) and self.trunk_blocks > 0
         if self.head_count is not None:
             assert isinstance(self.head_count, int) and self.head_count > 0 and self.embedding_dim % self.head_count == 0
-        assert isinstance(self.register_tokens, int) and self.register_tokens >= 0
-        assert self.register_tokens == 0 # FIXME
         assert isinstance(self.input_dropout_rate, float) and 0 <= self.input_dropout_rate < 1
         assert isinstance(self.input_droppatch_rate, float) and 0 <= self.input_droppatch_rate < 1
         assert isinstance(self.hidden_dropout_rate, float) and 0 <= self.hidden_dropout_rate < 1
         assert isinstance(self.use_bias, bool)
-        if self.trunk == 'perceiver':
-            assert isinstance(self.perceiver_latent_dim, int) and self.perceiver_latent_dim > 0
-            assert isinstance(self.perceiver_self_attn_per_cross_attn_blocks, int) and self.perceiver_self_attn_per_cross_attn_blocks > 0
-            if self.perceiver_cross_attn_head_count is not None:
-                assert isinstance(self.perceiver_cross_attn_head_count, int) and self.perceiver_cross_attn_head_count > 0 and self.embedding_dim % self.perceiver_cross_attn_head_count == 0
-        else:
-            assert self.perceiver_latent_dim is None
-            assert self.perceiver_self_attn_per_cross_attn_blocks is None
-            assert self.perceiver_cross_attn_head_count is None
 
 class Model(nn.Module):
     def __init__(
@@ -128,22 +102,17 @@ class Model(nn.Module):
             output_dim: int,
             output_count: int,
             grey_box_head: Optional[GREY_BOX_HEAD],
-            trunk: TRUNK,
             position_embedding: POSITION_EMBEDDING,
             pooling: POOLING,
             head: HEAD,
             fnn_style: FNN_STYLE,
-            patch_size: Optional[int],
+            patch_size: int,
             use_fourier_embed: bool,
             fourier_embed_num_bands: Optional[int],
             fourier_embed_sigma: Optional[float],
             embedding_dim: int,
             expansion_factor: int,
             trunk_blocks: int,
-            register_tokens: int,
-            perceiver_latent_dim: Optional[int],
-            perceiver_self_attn_per_cross_attn_blocks: Optional[int],
-            perceiver_cross_attn_head_count: Optional[int],
             head_count: Optional[int],
             input_dropout_rate: float,
             input_droppatch_rate: float,
@@ -157,7 +126,6 @@ class Model(nn.Module):
             output_dim=output_dim,
             output_count=output_count,
             grey_box_head=grey_box_head,
-            trunk=trunk,
             position_embedding=position_embedding,
             pooling=pooling,
             head=head,
@@ -169,10 +137,6 @@ class Model(nn.Module):
             embedding_dim=embedding_dim,
             expansion_factor=expansion_factor,
             trunk_blocks=trunk_blocks,
-            register_tokens=register_tokens,
-            perceiver_latent_dim=perceiver_latent_dim,
-            perceiver_self_attn_per_cross_attn_blocks=perceiver_self_attn_per_cross_attn_blocks,
-            perceiver_cross_attn_head_count=perceiver_cross_attn_head_count,
             head_count=head_count,
             input_dropout_rate=input_dropout_rate,
             input_droppatch_rate=input_droppatch_rate,
@@ -189,7 +153,6 @@ class Model(nn.Module):
             in_dims = 2*self.config.fourier_embed_num_bands
         else:
             in_dims = 1
-        assert self.config.use_patchifier
         self.patchifier = Patchifier(
             embedding_dim=self.config.embedding_dim,
             in_channels=in_dims,
@@ -198,22 +161,17 @@ class Model(nn.Module):
             position_embedding=self.config.position_embedding if self.config.position_embedding != 'rope' else 'none'
         )
 
-        if self.config.trunk == 'perceiver':
-            assert False
-        elif self.config.trunk == 'transformer':
-            self.trunk = TransformerTrunk(
-                transformer_blocks=self.config.trunk_blocks,
-                embedding_dim=self.config.embedding_dim,
-                head_count=self.config.head_count,
-                dropout_rate=self.config.hidden_dropout_rate,
-                use_bias=self.config.use_bias,
-                use_rope=self.config.position_embedding == 'rope',
-                expansion_factor=self.config.expansion_factor,
-                fnn_style=self.config.fnn_style
-            )
-        else:
-            assert False
-        
+        self.trunk = TransformerTrunk(
+            transformer_blocks=self.config.trunk_blocks,
+            embedding_dim=self.config.embedding_dim,
+            head_count=self.config.head_count,
+            dropout_rate=self.config.hidden_dropout_rate,
+            use_bias=self.config.use_bias,
+            use_rope=self.config.position_embedding == 'rope',
+            expansion_factor=self.config.expansion_factor,
+            fnn_style=self.config.fnn_style
+        )
+
         if self.config.pooling == 'attention':
             self.pool = AttentionPool(
                 output_tokens=self.config.output_count,
@@ -234,7 +192,7 @@ class Model(nn.Module):
             )
         else:
             assert False
-        
+
         if self.config.head == 'tied':
             self.heads = nn.Linear(self.config.embedding_dim, self.config.output_dim, bias=True)
         elif self.config.head == 'untied':
@@ -244,14 +202,14 @@ class Model(nn.Module):
             ])
         else:
             assert False
-        
+
         if self.config.grey_box_head == 'ascadv1':
             self.grey_box_head = ASCADv1Head()
         elif self.config.grey_box_head == 'ascadv2':
             self.grey_box_head = ASCADv2Head()
         else:
             self.grey_box_head = None
-        
+
         for mod in self.modules():
             if isinstance(mod, (nn.Linear, nn.Conv1d)):
                 nn.init.xavier_uniform_(mod.weight)
@@ -261,7 +219,7 @@ class Model(nn.Module):
                 nn.init.ones_(mod.weight)
                 if mod.bias is not None:
                     nn.init.zeros_(mod.bias)
-    
+
     def forward(self, x: torch.Tensor, attn_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         batch_size, _, seq_len = x.shape
         device = x.device
@@ -272,8 +230,7 @@ class Model(nn.Module):
             x = nn.functional.dropout(x, p=self.config.input_dropout_rate, training=self.training)
         if self.config.use_fourier_embed:
             x = self.fourier_embedding(x)
-        if self.config.use_patchifier:
-            x = self.patchifier(x)
+        x = self.patchifier(x)
         _, seq_len, _ = x.shape
         if self.config.input_droppatch_rate > 0 and self.training:
             droppatch_mask = torch.rand((batch_size, seq_len), device=device) >= self.config.input_droppatch_rate

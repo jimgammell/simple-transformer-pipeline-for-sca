@@ -1,5 +1,6 @@
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from pathlib import Path
+import torch
 
 from torch.utils.data import DataLoader
 
@@ -42,13 +43,7 @@ def load_numpy_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             partition=partition_id,
             **kwargs
         )
-    elif dataset_id == 'dpav4d2':
-        from uncropped_transformers.datasets.dpav4_2 import DPAv4d2_NumpyDataset
-        dataset = DPAv4d2_NumpyDataset(
-            root=_dirs.DPAV4d2_ROOT,
-            partition=partition_id,
-            **kwargs
-        )
+
     else:
         assert False
     return dataset
@@ -88,13 +83,7 @@ def load_torch_dataset(dataset_id: DATASET, partition_id: PARTITION, **kwargs) -
             partition=partition_id,
             **kwargs
         )
-    elif dataset_id == 'dpav4d2':
-        from uncropped_transformers.datasets.dpav4_2 import DPAv4d2_TorchDataset
-        dataset = DPAv4d2_TorchDataset(
-            root=_dirs.DPAV4d2_ROOT,
-            partition=partition_id,
-            **kwargs
-        )
+
     else:
         assert False
     return dataset
@@ -119,13 +108,20 @@ def construct_loaders(
 
 def load_trained_model(
         ckpt_path: Path,
-        profiling_set: Base_TorchDataset
+        profiling_set: Optional[Base_TorchDataset] = None
 ) -> SupervisedModule:
     assert ckpt_path.exists()
+    checkpoint = torch.load(ckpt_path, map_location='cpu', weights_only=False)
+    names = ('trace_mean', 'trace_std', 'trace_min', 'trace_rng')
+    if not all(name in checkpoint['state_dict'] for name in names):
+        raise ValueError('Checkpoint is missing persistent normalization statistics; regenerate the checkpoint.')
+    statistics = {name: checkpoint['state_dict'][name] for name in names}
+    del checkpoint
     module = SupervisedModule.load_from_checkpoint(
         ckpt_path,
         map_location='cpu',
         weights_only=False,
-        trace_statistics=profiling_set.get_trace_statistics()
+        checkpoint_statistics=statistics,
+        strict=True,
     )
     return module

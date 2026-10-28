@@ -173,22 +173,22 @@ Trial configurations should be stored in `./config` as YAML files. We provide re
 
 Models can be trained by running the following command, where `CONFIG_FILE` is replaced with the name of a config file in `./config` without the `.yaml` suffix, and `DEST` is a path to the directory where checkpoints and logs should be saved:
 ```bash
-python experiments/train_supervised_model.py \
+python experiments/train.py \
     --config-file CONFIG_FILE \
     --dest DEST
 ```
 For example, use the following commands to reproduce the training runs with our reported results:
 - ASCADv1 (fixed key):
 ```bash
-python experiments/train_supervised_model.py --config-file ascadv1_fixed --dest ./outputs/ascadv1_fixed/demo_run
+python experiments/train.py --config-file ascadv1_fixed --dest ./outputs/ascadv1_fixed/demo_run
 ```
 - ASCADv1 (variable key):
 ```bash
-python experiments/train_supervised_model.py --config-file ascadv1_variable --dest ./outputs/ascadv1_variable/demo_run
+python experiments/train.py --config-file ascadv1_variable --dest ./outputs/ascadv1_variable/demo_run
 ```
 - CHES-CTF-2018:
 ```bash
-python experiments/train_supervised_model.py --config-file ches_ctf_2018 --dest ./outputs/ches_ctf_2018/demo_run
+python experiments/train.py --config-file ches_ctf_2018 --dest ./outputs/ches_ctf_2018/demo_run
 ```
 This command will save the following files to `DEST`:
 - `best_{metric_name}.ckpt`: the checkpoint of the best model according to `{metric_name}` (validation rank by default).
@@ -197,25 +197,32 @@ This command will save the following files to `DEST`:
 - `config.yaml`: a config file encoding settings/info for reproducibility -- e.g. hyperparameters (after loading the yaml and applying command-line overrides), the Git commit hash, random seed.
 - `hparams.yaml`: a config file used internally by PyTorch Lightning for saving/loading checkpoints.
 
+Training and tuning use only the profiling partition and its held-out validation split. Attack evaluation is a separate step.
+
 ### Evaluating trained models on the attack set
 
 The following command will compute, cache, and display a trained model's full-key and per-byte cross-entropy loss, accuracy, MTD, and correct-key rank on the test set, where `CKPT_PATH` is a path to a trained model checkpoint:
 ```bash
-python experiments/evaluate_trained_model.py \
-    --model-ckpt-path CKPT_PATH \
-    --metrics attack-performance
+python experiments/attack.py \
+    --model-ckpt-path CKPT_PATH
 ```
 This command assumes the checkpoint is stored in an experiment directory produced by our training script, which contains a `config.yaml` file. It will save the following files to this directory:
 - `attack_metrics.npz`: a cache of the performance metrics computed on the attack set.
+
+The compressed NPZ contains raw `ranks_zero_based` (`uint8`, attacks × traces × outputs), one-based `guessing_entropy` and `success_rate` (outputs × traces), simultaneous `full_key_success_rate` (traces), mean `per_byte_mtd`, and the existing scalar test metrics. Ranks use pessimistic ties; success means evaluator rank 1. MTD requires sustained recovery through the saved horizon; horizon + 1 denotes censored nonrecovery, not observed disclosure. Scalar JSON `metadata` records these conventions, horizon, attack count and cache identity (checkpoint/source SHA256, dataset, targets, preprocessing and evaluation settings). Load with `allow_pickle=False`; no raw scores are stored. Compression reduces storage for repeated low ranks without reducing precision.
+
+Checkpoint normalization statistics are persistent buffers and loaded without consulting replacement dataset statistics. Checkpoints missing these buffers must be regenerated. Caches are skipped only when embedded identities match; missing/mismatched metadata requires `--overwrite`.
+
+`python experiments/attribute.py --ckpt-path CKPT_PATH --attr-methods gradvis input-x-gradient` saves `gradvis.npz` and `input_x_gradient.npz`, each containing `attributions` and scalar JSON `metadata` with checkpoint/source identity and attribution settings. This command also supports `--overwrite`; matching caches are checked before loading data or models.
 
 ### Plotting training curves
 
 The following command will visualize the logs of train/val loss, acc, rank over time, and cached attack performance metrics, where `RUN_DIR` is a path to an experiment directory produced by our training script:
 ```bash
-python experiments/visualize_trained_model.py \
+python experiments/plot_performance.py \
     --run-dir RUN_DIR
 ```
-This command assumes that the files `metrics.csv` and `attack_metrics.npz` exist and will save the following files to this directory:
+This command only reads saved data, skips missing input files, and saves the following files to this directory:
 - `training_curves.pdf`: plots of the train/val loss, rank, accuracy vs. training steps.
 - `attack_performance.pdf`: a plot of correct-key rank vs. traces seen on the attack set, and a visualization of the per-byte MTD.
 
@@ -223,7 +230,7 @@ This command assumes that the files `metrics.csv` and `attack_metrics.npz` exist
 
 Hyperparameter tuning is done from the same entrypoint as training by adding additional command line arguments. Run the following command, where `OPTUNA_STUDY_PATH` specifies where the hyperparameter tuning database will be stored (recommended: `DEST/study.log`), and OPTUNA_TOTAL_TRIALS specifies the number of trials to run. The hyperparameters to be tuned and their search spaces are specified in the config file.
 ```bash
-python experiments/train_supervised_model.py \
+python experiments/train.py \
     --config-file CONFIG_FILE \
     --dest DEST \
     --optuna-study-path OPTUNA_STUDY_PATH \
@@ -257,6 +264,8 @@ M \geq \max_i M_i.
  For example, a model with $M_1 = M_2 = 100$ might have $M = 100$ if errors are perfectly correlated across permutations, or $M = 125$ if $M_1 = 100$ for every permutation but $M_2 = 50$ for half of permutations and $150$ for the other half.
 
 ### Computational cost and scaling behavior
+
+Run `python experiments/benchmark_cost_scaling.py` to save the compute benchmark, then `python experiments/plot_cost_scaling.py` to plot its saved results. The plotting command always generates `cost_scaling.pdf`; `--dest` selects its output directory.
 
 Below we visualize how the computational cost of our method scales with key transformer architecture hyperparameters. We report the parameter count, floating point operations (FLOPs) per training step, peak VRAM usage during training, and wall clock time per step on our reference machine. We fix the minibatch size at 256. To avoid confounding due to filesystem speed, we generate random $2^{18}$-length traces directly in VRAM.
 
