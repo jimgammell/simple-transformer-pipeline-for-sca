@@ -1,9 +1,9 @@
 from typing import Union
 
 import numpy as np
-from numpy.typing import NDArray
-from numba import jit
 import torch
+from numba import jit
+from numpy.typing import NDArray
 from torchmetrics import Metric
 
 

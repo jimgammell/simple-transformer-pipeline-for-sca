@@ -22,9 +22,9 @@ from matplotlib import pyplot as plt
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils.visualize_runs import (
     plot_leakiness_over_time,
-    plot_wb_comparison_grid,
-    plot_rank_trajectories,
     plot_per_byte_bar,
+    plot_rank_trajectories,
+    plot_wb_comparison_grid,
 )
 
 # ── helpers ───────────────────────────────────────────────────────────────────

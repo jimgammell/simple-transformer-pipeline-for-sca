@@ -1,29 +1,29 @@
-from typing import Optional, Dict, get_args
-from pathlib import Path
 import argparse
 import logging
+from pathlib import Path
+from typing import Dict, Optional, get_args
 
 import numpy as np
-from numpy.typing import NDArray
-from lightning import Trainer
-from uncropped_transformers.datasets import DATASET
-from uncropped_transformers.evaluation.mtd import accumulate_ranks, compute_mtd
-
 import torch
-from init_things.directories import safe_load_yaml
 from init_things.directories import (
     append_directory_clargs,
     init_directories,
     load_directory_config,
+    safe_load_yaml,
 )
-from utils.load_things import load_torch_dataset, construct_loaders, load_trained_model
-from utils.training_config import SupervisedTrainingConfig
+from lightning import Trainer
+from numpy.typing import NDArray
 from utils.artifacts import (
     artifact_identity,
-    metadata_json,
     cache_matches,
+    metadata_json,
     summarize_ranks,
 )
+from utils.load_things import construct_loaders, load_torch_dataset, load_trained_model
+from utils.training_config import SupervisedTrainingConfig
+
+from uncropped_transformers.datasets import DATASET
+from uncropped_transformers.evaluation.mtd import accumulate_ranks, compute_mtd
 
 
 def run_attack_performance_evalutaion(

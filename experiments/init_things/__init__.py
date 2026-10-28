@@ -1,16 +1,16 @@
-import random
-from typing import Optional, Dict, Any
-import shutil
 import logging
+import random
+import shutil
 from binascii import crc32
+from typing import Any, Dict, Optional
 
-import numpy as np
-from matplotlib import pyplot as plt
-import torch
 import lightning
+import numpy as np
+import torch
+from matplotlib import pyplot as plt
 
 from . import directories
-from .mpl_constants import WIDTH, DPI
+from .mpl_constants import DPI, WIDTH
 
 __all__ = [
     "directories",

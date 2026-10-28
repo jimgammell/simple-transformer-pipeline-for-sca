@@ -2,31 +2,32 @@
 #  We use the files PinataAcqTask2.{1, 2, 3}_10k_upload.trs for profiling and PinataAcqTask2.4_10k_upload.trs for attacking.
 #  There are 2 more files which only contain 1k traces each -- IDK what they are, but similarly to above implementation, I'm not using them.
 
+from dataclasses import dataclass
+from pathlib import Path
 from typing import (
-    Literal,
-    Union,
-    List,
-    Sequence,
-    Dict,
-    Tuple,
     Any,
-    Optional,
     Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
     get_args,
 )
-from pathlib import Path
-from dataclasses import dataclass
 
 import numpy as np
-from numpy.typing import NDArray
-import trsfile
 import torch
+import trsfile
+from numpy.typing import NDArray
 
-from .common import PARTITION
+from uncropped_transformers.utils import aes
+
 from .base_dataset import Base_NumpyDataset, Base_TorchDataset
+from .common import PARTITION
 from .compute_trace_statistics import compute_trace_statistics
 from .convert_to_binary import convert_trs_to_binary
-from uncropped_transformers.utils import aes
 
 TARGET_BYTE = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 TARGET_VARIABLE = Literal["subbytes", "key", "plaintext", "ciphertext"]

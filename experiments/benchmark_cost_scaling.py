@@ -12,17 +12,17 @@ Usage:
     python experiments/benchmark_cost_scaling.py [--dest PATH]
 """
 
-from typing import Optional
 import argparse
 import time
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import torch
+from init_things import OUTPUTS_ROOT
 from torch.profiler import ProfilerActivity, profile
 
 from uncropped_transformers.models.model import Model
-from init_things import OUTPUTS_ROOT
 
 # ── Fixed benchmark parameters ────────────────────────────────────────────────
 BATCH_SIZE = 256

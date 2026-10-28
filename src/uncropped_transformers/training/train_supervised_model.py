@@ -1,14 +1,14 @@
-from typing import Optional, Literal, List
-from pathlib import Path
 import shutil
+from pathlib import Path
+from typing import List, Literal, Optional
 
-import torch
-import pandas as pd
-from torch.utils.data import DataLoader
 import lightning
-from lightning import Trainer, LightningModule
+import pandas as pd
+import torch
+from lightning import LightningModule, Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
+from torch.utils.data import DataLoader
 
 
 def _is_training_complete(ckpt_path: Path, total_steps: int) -> bool:

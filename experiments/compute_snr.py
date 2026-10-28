@@ -1,17 +1,17 @@
-from typing import Optional, get_args
-from pathlib import Path
 import argparse
 import logging
+from pathlib import Path
+from typing import Optional, get_args
 
 import numpy as np
+from init_things import OUTPUTS_ROOT
+from init_things.directories import append_directory_clargs
+from init_things.mpl_constants import DPI
 from matplotlib import pyplot as plt
+from utils.load_things import load_numpy_dataset
+
 from uncropped_transformers.datasets import DATASET, PARTITION
 from uncropped_transformers.parametric.snr import compute_snr
-
-from init_things import OUTPUTS_ROOT
-from init_things.mpl_constants import DPI
-from init_things.directories import append_directory_clargs
-from utils.load_things import load_numpy_dataset
 
 
 def run_compute_snr(

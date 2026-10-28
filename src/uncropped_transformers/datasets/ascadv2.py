@@ -1,29 +1,30 @@
 # Adapted from https://github.com/ANSSI-FR/ASCAD/blob/master/ASCAD_generate.py
 
+from dataclasses import dataclass
+from pathlib import Path
 from typing import (
-    Union,
-    Literal,
-    Sequence,
-    List,
-    Optional,
-    Dict,
-    Tuple,
     Any,
     Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
     get_args,
 )
-from pathlib import Path
-from dataclasses import dataclass
 
 import h5py
-from tqdm import tqdm
 import numpy as np
-from numpy.typing import NDArray
 import torch
+from numpy.typing import NDArray
+from tqdm import tqdm
 
-from .common import PARTITION
 from uncropped_transformers.utils import aes
+
 from .base_dataset import Base_NumpyDataset, Base_TorchDataset
+from .common import PARTITION
 from .compute_trace_statistics import compute_trace_statistics
 
 TARGET_BYTE = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]

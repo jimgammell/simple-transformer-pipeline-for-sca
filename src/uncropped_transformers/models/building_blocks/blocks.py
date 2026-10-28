@@ -1,9 +1,9 @@
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 import torch
 from torch import nn
 
-from .attention import SelfAttention, CrossAttention
+from .attention import CrossAttention, SelfAttention
 from .fnn import MLP, GatedFNN
 
 FNN_STYLE = Literal["mlp", "gated"]

@@ -1,10 +1,10 @@
-from typing import Callable, Optional, Dict, Union, Sequence, Tuple
 from abc import ABC, abstractmethod
+from typing import Callable, Dict, Optional, Sequence, Tuple, Union
 
 import h5py
 import numpy as np
-from numpy.typing import NDArray
 import torch
+from numpy.typing import NDArray
 from torch.utils.data import Dataset
 
 

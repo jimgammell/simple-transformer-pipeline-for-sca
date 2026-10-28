@@ -1,19 +1,19 @@
-from typing import List, Optional, Dict, Any, Annotated, Literal
+from typing import Annotated, Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
 
 from uncropped_transformers.datasets import DATASET
-from uncropped_transformers.training.supervised_lightning_module import (
-    PREPROCESSING,
-    LEAKAGE_MODEL,
+from uncropped_transformers.models.model import (
+    FNN_STYLE,
+    GREY_BOX_HEAD,
+    HEAD,
+    POOLING,
+    POSITION_EMBEDDING,
 )
 from uncropped_transformers.training.hyperparameter_tuning import ParamConfig
-from uncropped_transformers.models.model import (
-    GREY_BOX_HEAD,
-    POSITION_EMBEDDING,
-    POOLING,
-    HEAD,
-    FNN_STYLE,
+from uncropped_transformers.training.supervised_lightning_module import (
+    LEAKAGE_MODEL,
+    PREPROCESSING,
 )
 
 

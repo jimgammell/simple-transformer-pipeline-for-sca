@@ -1,9 +1,9 @@
-from typing import Tuple, Dict, Callable, Literal, Optional
 from functools import partial
+from typing import Callable, Dict, Literal, Optional, Tuple
 
 import torch
-from tqdm import tqdm
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from uncropped_transformers.training.supervised_lightning_module import SupervisedModule
 

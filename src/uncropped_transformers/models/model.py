@@ -1,12 +1,12 @@
-from typing import Literal, Optional, get_args
 from dataclasses import dataclass
+from typing import Literal, Optional, get_args
 
 import torch
 from torch import nn
 
 from .building_blocks.feature_preprocessing import FourierEmbed, Patchifier
-from .building_blocks.pooling import AttentionPool, AveragePool, TokenPool
 from .building_blocks.grey_box_heads import ASCADv1Head, ASCADv2Head
+from .building_blocks.pooling import AttentionPool, AveragePool, TokenPool
 from .trunks.transformer import TransformerTrunk
 
 POSITION_EMBEDDING = Literal["learned", "sinusoidal", "rope"]

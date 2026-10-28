@@ -16,17 +16,17 @@ Re-running is safe: already-enqueued (WAITING) and in-progress (RUNNING) trials 
 counted and skipped so no duplicates are created.
 """
 
-from pathlib import Path
 import argparse
 import logging
-
+from pathlib import Path
 
 from init_things import SEED
 from init_things.directories import CONFIG_ROOT, append_directory_clargs, safe_load_yaml
 from utils.training_config import SupervisedTrainingConfig
+
 from uncropped_transformers.training.hyperparameter_tuning import (
-    get_study,
     generate_qmc_trials,
+    get_study,
 )
 
 

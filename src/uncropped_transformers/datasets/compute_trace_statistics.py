@@ -1,9 +1,9 @@
-from typing import Tuple, Optional
 from math import ceil
+from typing import Optional, Tuple
 
-from tqdm import tqdm
 import numpy as np
 from numpy.typing import NDArray
+from tqdm import tqdm
 
 from .base_dataset import Base_NumpyDataset
 

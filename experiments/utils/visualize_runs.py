@@ -1,10 +1,9 @@
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
+import numpy as np
 import pandas
 from matplotlib.axes import Axes
-import numpy as np
-
 
 from uncropped_transformers.datasets.ascadv1 import repr_target as ascadv1_repr_target
 

@@ -1,9 +1,9 @@
-from typing import Dict, Callable, List, Optional, Literal
+from typing import Callable, Dict, List, Literal, Optional
 
-from numba import jit, prange
 import numpy as np
-from numpy.typing import NDArray
 import torch
+from numba import jit, prange
+from numpy.typing import NDArray
 from torchmetrics import Metric
 from torchmetrics.utilities import dim_zero_cat
 

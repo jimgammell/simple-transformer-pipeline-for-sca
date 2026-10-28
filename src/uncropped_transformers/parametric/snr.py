@@ -1,9 +1,9 @@
 from typing import Dict
 
-from tqdm import tqdm
+import numba
 import numpy as np
 from numpy.typing import NDArray
-import numba
+from tqdm import tqdm
 
 from uncropped_transformers.datasets.base_dataset import Base_NumpyDataset
 

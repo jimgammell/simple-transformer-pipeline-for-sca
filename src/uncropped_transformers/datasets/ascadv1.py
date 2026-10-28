@@ -1,27 +1,28 @@
-from typing import (
-    Literal,
-    Union,
-    List,
-    Optional,
-    Callable,
-    Tuple,
-    Sequence,
-    Dict,
-    Any,
-    get_args,
-)
 from dataclasses import dataclass
 from pathlib import Path
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    get_args,
+)
 
 import h5py
 import numpy as np
-from numpy.typing import NDArray
 import torch
+from numpy.typing import NDArray
 
 from uncropped_transformers.utils import aes
 from uncropped_transformers.utils.checksum import get_sha256_hash
-from .common import PARTITION
+
 from .base_dataset import Base_NumpyDataset, Base_TorchDataset
+from .common import PARTITION
 from .compute_trace_statistics import compute_trace_statistics
 from .convert_to_binary import convert_hdf5_to_binary
 

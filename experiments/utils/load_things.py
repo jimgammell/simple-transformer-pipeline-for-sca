@@ -1,10 +1,10 @@
-from typing import List, Tuple, Optional
 from pathlib import Path
-import torch
+from typing import List, Optional, Tuple
 
+import torch
+from init_things import directories as _dirs
 from torch.utils.data import DataLoader
 
-from init_things import directories as _dirs
 from uncropped_transformers.datasets import (
     DATASET,
     PARTITION,

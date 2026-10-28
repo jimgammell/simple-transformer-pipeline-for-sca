@@ -2,10 +2,9 @@ import argparse
 from pathlib import Path
 
 import numpy as np
+from init_things import DPI, OUTPUTS_ROOT, WIDTH
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
-
-from init_things import OUTPUTS_ROOT, WIDTH, DPI
 
 
 def run_plot_cost_scaling(dest: Path):

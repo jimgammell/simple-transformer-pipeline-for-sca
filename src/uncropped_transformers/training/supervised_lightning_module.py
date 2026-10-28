@@ -1,22 +1,22 @@
-from typing import Optional, Callable, Dict, Any, get_args
 from dataclasses import dataclass
+from typing import Any, Callable, Dict, Optional, get_args
 
+import lightning
 import numpy as np
 import torch
 from torch import nn, optim
-import lightning
 from torchmetrics import MetricCollection
 from torchmetrics.classification import MulticlassAccuracy
 
-from .common import LEAKAGE_MODEL, PHASE, PREPROCESSING, BATCH
-from .cosine_decay_lr_scheduler import CosineDecayLRSched
+from ..evaluation.acc import FullKeyAccuracy
 from ..evaluation.mtd import MinimumTracesToDisclosure
 from ..evaluation.rank import Rank
-from ..evaluation.acc import FullKeyAccuracy
 from ..models.building_blocks.bits_and_bytes import (
     BitLogitsToByteLogits,
     HwLogitsToByteLogits,
 )
+from .common import BATCH, LEAKAGE_MODEL, PHASE, PREPROCESSING
+from .cosine_decay_lr_scheduler import CosineDecayLRSched
 
 
 @dataclass

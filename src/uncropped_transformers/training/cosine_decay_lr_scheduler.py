@@ -1,9 +1,9 @@
 from typing import Optional
 
-import torch
 import numpy as np
-from torch.optim.optimizer import Optimizer
+import torch
 from torch.optim.lr_scheduler import LambdaLR
+from torch.optim.optimizer import Optimizer
 
 
 class CosineDecayLRSched(LambdaLR):

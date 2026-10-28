@@ -1,11 +1,11 @@
+from math import ceil
 from pathlib import Path
 from typing import Optional, Sequence
-from math import ceil
 
-from tqdm import tqdm
 import h5py
 import numpy as np
 import trsfile
+from tqdm import tqdm
 
 
 def convert_hdf5_to_binary(

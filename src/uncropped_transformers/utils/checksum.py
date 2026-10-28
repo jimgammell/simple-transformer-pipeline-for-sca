@@ -1,6 +1,6 @@
-from pathlib import Path
 import hashlib
 from functools import partial
+from pathlib import Path
 
 
 def get_sha256_hash(path: Path, block_size: int = 4096) -> str:

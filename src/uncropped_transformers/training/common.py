@@ -1,4 +1,4 @@
-from typing import Literal, Tuple, Dict
+from typing import Dict, Literal, Tuple
 
 import torch
 

@@ -1,32 +1,17 @@
-from typing import Dict, Any, Tuple, List, get_args, Optional
-from copy import copy
 import argparse
 import fcntl
 import logging
 import subprocess
+from copy import copy
 from functools import partial
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, get_args
 
-import yaml
-import pandas
-import numpy as np
-from torch.utils.data import Dataset, Subset
 import lightning
+import numpy as np
 import optuna
-from uncropped_transformers.datasets import Base_TorchDataset
-from uncropped_transformers.training import SupervisedModule
-from uncropped_transformers.training.train_supervised_model import (
-    train_supervised_model,
-)
-from uncropped_transformers.training.hyperparameter_tuning import (
-    SamplerType,
-    PruningCallback,
-    sample_hparams,
-    get_study,
-    generate_qmc_trials,
-)
-from uncropped_transformers.models import Model
-
+import pandas
+import yaml
 from init_things import SEED, set_seed, str_to_seed
 from init_things.directories import (
     CONFIG_ROOT,
@@ -35,8 +20,23 @@ from init_things.directories import (
     load_directory_config,
     safe_load_yaml,
 )
-from utils.load_things import load_torch_dataset, construct_loaders
+from torch.utils.data import Dataset, Subset
+from utils.load_things import construct_loaders, load_torch_dataset
 from utils.training_config import SupervisedTrainingConfig
+
+from uncropped_transformers.datasets import Base_TorchDataset
+from uncropped_transformers.models import Model
+from uncropped_transformers.training import SupervisedModule
+from uncropped_transformers.training.hyperparameter_tuning import (
+    PruningCallback,
+    SamplerType,
+    generate_qmc_trials,
+    get_study,
+    sample_hparams,
+)
+from uncropped_transformers.training.train_supervised_model import (
+    train_supervised_model,
+)
 
 
 # function by Claude to override particular config arguments from the command line

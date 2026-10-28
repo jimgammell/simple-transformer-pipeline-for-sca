@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 import torch
-from torch import nn
 from rotary_embedding_torch import RotaryEmbedding
+from torch import nn
 
 
 @dataclass

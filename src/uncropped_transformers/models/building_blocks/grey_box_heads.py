@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from .bits_and_bytes import SoftXOR, SoftSbox, SoftGF256Mult, SoftGF256Inv
+from .bits_and_bytes import SoftGF256Inv, SoftGF256Mult, SoftSbox, SoftXOR
 
 
 class ASCADv1Head(nn.Module):

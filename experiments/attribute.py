@@ -1,13 +1,6 @@
-from typing import List, Optional, get_args
-from pathlib import Path
 import argparse
-
-from torch.utils.data import DataLoader
-from uncropped_transformers.training.supervised_lightning_module import SupervisedModule
-from uncropped_transformers.deep_attribution.attributor import (
-    Attributor,
-    ATTRIBUTION_METHOD,
-)
+from pathlib import Path
+from typing import List, Optional, get_args
 
 import numpy as np
 import torch
@@ -18,9 +11,16 @@ from init_things.directories import (
     load_directory_config,
     safe_load_yaml,
 )
+from torch.utils.data import DataLoader
+from utils.artifacts import artifact_identity, cache_matches, metadata_json
+from utils.load_things import construct_loaders, load_torch_dataset, load_trained_model
 from utils.training_config import SupervisedTrainingConfig
-from utils.load_things import load_torch_dataset, construct_loaders, load_trained_model
-from utils.artifacts import artifact_identity, metadata_json, cache_matches
+
+from uncropped_transformers.deep_attribution.attributor import (
+    ATTRIBUTION_METHOD,
+    Attributor,
+)
+from uncropped_transformers.training.supervised_lightning_module import SupervisedModule
 
 torch.backends.cudnn.benchmark = False
 
