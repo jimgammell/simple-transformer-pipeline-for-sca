@@ -1,5 +1,5 @@
 import random
-from typing import Optional, Dict, Any, Literal
+from typing import Optional, Dict, Any
 import shutil
 import logging
 from binascii import crc32
@@ -9,8 +9,19 @@ from matplotlib import pyplot as plt
 import torch
 import lightning
 
-from .directories import *
-from .mpl_constants import *
+from . import directories
+from .mpl_constants import WIDTH, DPI
+
+__all__ = [
+    "directories",
+    "WIDTH",
+    "DPI",
+    "OUTPUTS_ROOT",
+    "SEED",
+    "set_seed",
+    "str_to_seed",
+    "init",
+]
 
 SEED: int = 0
 
@@ -23,36 +34,48 @@ def set_seed(seed: Optional[int] = None):
     random.seed(SEED)
     np.random.seed(SEED)
     torch.manual_seed(SEED)
-    lightning.seed_everything(SEED) # redundant but can't hurt
+    lightning.seed_everything(SEED)  # redundant but can't hurt
+
 
 def str_to_seed(s: str) -> int:
     return (SEED + crc32(s.encode())) & 0xFFFFFFFF
 
+
 def init(clargs: Optional[Dict[str, Any]] = None):
     logging.basicConfig(level=logging.INFO)
-    latex_available = shutil.which('latex') is not None
+    latex_available = shutil.which("latex") is not None
     if not latex_available:
-        logging.warning('Latex installation not found. Falling back to non-Latex plotting, which might look ugly.')
-    plt.rcParams.update({
-        'font.size': 8,
-        'axes.titlesize': 8,
-        'axes.labelsize': 7,
-        'xtick.labelsize': 6,
-        'ytick.labelsize': 6,
-        'legend.fontsize': 6,
-        'figure.titlesize': 8,
-        'font.family': 'serif',
-        'text.usetex': latex_available,
-        **(
-            {'text.latex.preamble': r'\usepackage{times} \usepackage{amsmath} \usepackage{amssymb}'}
-            if latex_available else {}
+        logging.warning(
+            "Latex installation not found. Falling back to non-Latex plotting, which might look ugly."
         )
-    })
+    plt.rcParams.update(
+        {
+            "font.size": 8,
+            "axes.titlesize": 8,
+            "axes.labelsize": 7,
+            "xtick.labelsize": 6,
+            "ytick.labelsize": 6,
+            "legend.fontsize": 6,
+            "figure.titlesize": 8,
+            "font.family": "serif",
+            "text.usetex": latex_available,
+            **(
+                {
+                    "text.latex.preamble": r"\usepackage{times} \usepackage{amsmath} \usepackage{amssymb}"
+                }
+                if latex_available
+                else {}
+            ),
+        }
+    )
     torch.backends.cudnn.benchmark = True
-    torch.set_float32_matmul_precision('high')
+    torch.set_float32_matmul_precision("high")
     set_seed()
     directory_config = directories.load_directory_config()
     directories.init_directories(clargs, directory_config)
 
+
 init()
-from .directories import * # since global variables change after the init function is run
+OUTPUTS_ROOT = (
+    directories.OUTPUTS_ROOT
+)  # since global variables change after the init function is run

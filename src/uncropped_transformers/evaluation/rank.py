@@ -1,14 +1,16 @@
-from typing import Union, List
+from typing import Union
 
 import numpy as np
 from numpy.typing import NDArray
 from numba import jit
 import torch
 from torchmetrics import Metric
-from torchmetrics.utilities import dim_zero_cat
+
 
 @jit(nopython=True)
-def _get_rank(preds: NDArray[np.floating], targets: NDArray[np.integer]) -> NDArray[np.integer]:
+def _get_rank(
+    preds: NDArray[np.floating], targets: NDArray[np.integer]
+) -> NDArray[np.integer]:
     batch_size, class_count = preds.shape
     ranks = np.full((batch_size,), 0, dtype=np.int64)
     for batch_idx in range(batch_size):
@@ -18,9 +20,10 @@ def _get_rank(preds: NDArray[np.floating], targets: NDArray[np.integer]) -> NDAr
         ranks[batch_idx] = rank
     return ranks
 
+
 def get_rank(
-        preds: Union[torch.Tensor, NDArray[np.floating]],
-        targets: Union[torch.Tensor, NDArray[np.integer]]
+    preds: Union[torch.Tensor, NDArray[np.floating]],
+    targets: Union[torch.Tensor, NDArray[np.integer]],
 ) -> NDArray[np.int64]:
     if isinstance(preds, torch.Tensor):
         preds = preds.float().detach().cpu().numpy()
@@ -42,6 +45,7 @@ def get_rank(
     ranks = ranks.reshape(*batch_dims)
     return ranks
 
+
 def get_rank_torch(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     *batch_dims, class_count = preds.shape
     assert batch_dims == list(targets.shape)
@@ -52,20 +56,21 @@ def get_rank_torch(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     ranks = ranks.reshape(*batch_dims)
     return ranks
 
+
 class Rank(Metric):
     rank_sum: torch.Tensor
     rank_count: torch.Tensor
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.add_state('rank_sum', default=torch.tensor(0.), dist_reduce_fx='sum')
-        self.add_state('rank_count', default=torch.tensor(0), dist_reduce_fx='sum')
-    
+        self.add_state("rank_sum", default=torch.tensor(0.0), dist_reduce_fx="sum")
+        self.add_state("rank_count", default=torch.tensor(0), dist_reduce_fx="sum")
+
     def update(self, preds: torch.Tensor, targets: torch.Tensor):
         ranks = get_rank_torch(preds, targets)
         self.rank_sum += ranks.sum()
         self.rank_count += targets.numel()
-    
+
     def compute(self) -> torch.Tensor:
         mean_rank = self.rank_sum / self.rank_count
         return mean_rank

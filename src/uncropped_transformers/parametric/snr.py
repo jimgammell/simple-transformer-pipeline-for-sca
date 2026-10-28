@@ -13,7 +13,7 @@ def _accumulate_pass1(
     traces: np.ndarray,
     int_vals: np.ndarray,
     per_target_sums: np.ndarray,
-    per_target_counts: np.ndarray
+    per_target_counts: np.ndarray,
 ) -> None:
     """
     Accumulate per-target sums and counts.
@@ -39,7 +39,7 @@ def _accumulate_pass2(
     traces: np.ndarray,
     int_vals: np.ndarray,
     per_target_means: np.ndarray,
-    noise_sum_sq: np.ndarray
+    noise_sum_sq: np.ndarray,
 ) -> None:
     """
     Accumulate squared deviations from per-target means.
@@ -62,10 +62,10 @@ def _accumulate_pass2(
 
 
 def compute_snr(
-        dataset: Base_NumpyDataset,
-        chunk_size: int = 4096,
-        use_progress_bar: bool = False,
-        dtype: np.dtype = np.float32
+    dataset: Base_NumpyDataset,
+    chunk_size: int = 4096,
+    use_progress_bar: bool = False,
+    dtype: np.dtype = np.float32,
 ) -> Dict[str, NDArray[np.floating]]:
     """
     Compute Signal-to-Noise Ratio (SNR) for side-channel analysis.
@@ -77,9 +77,11 @@ def compute_snr(
     col_count = dataset.timestep_count
 
     # Probe the first chunk to discover intermediate variable keys and their byte counts
-    probe_traces, _, probe_intermediate_values = dataset[0:min(chunk_size, row_count)]
+    probe_traces, _, probe_intermediate_values = dataset[0 : min(chunk_size, row_count)]
     int_val_keys = list(probe_intermediate_values.keys())
-    int_val_byte_counts = {key: val.shape[1] for key, val in probe_intermediate_values.items()}
+    int_val_byte_counts = {
+        key: val.shape[1] for key, val in probe_intermediate_values.items()
+    }
     del probe_traces, probe_intermediate_values
 
     total_work = 2 * row_count * len(int_val_keys)
@@ -100,10 +102,14 @@ def compute_snr(
             traces, _, intermediate_values = dataset[chunk_start:chunk_end]
             batch_size = traces.shape[0]
             traces_float = np.ascontiguousarray(traces.astype(dtype))
-            int_val_u8 = np.ascontiguousarray(intermediate_values[int_val_key].astype(np.uint8))
+            int_val_u8 = np.ascontiguousarray(
+                intermediate_values[int_val_key].astype(np.uint8)
+            )
             del traces, intermediate_values
 
-            _accumulate_pass1(traces_float, int_val_u8, per_target_sums, per_target_counts)
+            _accumulate_pass1(
+                traces_float, int_val_u8, per_target_sums, per_target_counts
+            )
             del traces_float, int_val_u8
 
             if use_progress_bar:
@@ -122,7 +128,9 @@ def compute_snr(
             traces, _, intermediate_values = dataset[chunk_start:chunk_end]
             batch_size = traces.shape[0]
             traces_float = np.ascontiguousarray(traces.astype(dtype))
-            int_val_u8 = np.ascontiguousarray(intermediate_values[int_val_key].astype(np.uint8))
+            int_val_u8 = np.ascontiguousarray(
+                intermediate_values[int_val_key].astype(np.uint8)
+            )
             del traces, intermediate_values
 
             _accumulate_pass2(traces_float, int_val_u8, per_target_means, noise_sum_sq)
@@ -134,10 +142,16 @@ def compute_snr(
         # Compute SNR for this intermediate variable
         # Weighted variance of per-target means, using counts as weights,
         # so that unobserved target values (zero-filled) don't bias the result.
-        weights = per_target_counts[..., np.newaxis].astype(dtype)  # (byte_count, 256, 1)
+        weights = per_target_counts[..., np.newaxis].astype(
+            dtype
+        )  # (byte_count, 256, 1)
         total_weights = weights.sum(axis=1, keepdims=True)  # (byte_count, 1, 1)
-        weighted_mean = (weights * per_target_means).sum(axis=1, keepdims=True) / total_weights  # (byte_count, 1, col_count)
-        signal_var = (weights * (per_target_means - weighted_mean) ** 2).sum(axis=1) / total_weights.squeeze(1)  # (byte_count, col_count)
+        weighted_mean = (weights * per_target_means).sum(
+            axis=1, keepdims=True
+        ) / total_weights  # (byte_count, 1, col_count)
+        signal_var = (weights * (per_target_means - weighted_mean) ** 2).sum(
+            axis=1
+        ) / total_weights.squeeze(1)  # (byte_count, col_count)
         noise_var = noise_sum_sq / row_count
         snr_vals[int_val_key] = signal_var / noise_var
         del per_target_means, per_target_counts, noise_sum_sq

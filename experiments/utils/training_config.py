@@ -3,9 +3,18 @@ from typing import List, Optional, Dict, Any, Annotated, Literal
 from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
 
 from uncropped_transformers.datasets import DATASET
-from uncropped_transformers.training.supervised_lightning_module import PREPROCESSING, LEAKAGE_MODEL
+from uncropped_transformers.training.supervised_lightning_module import (
+    PREPROCESSING,
+    LEAKAGE_MODEL,
+)
 from uncropped_transformers.training.hyperparameter_tuning import ParamConfig
-from uncropped_transformers.models.model import GREY_BOX_HEAD, POSITION_EMBEDDING, POOLING, HEAD, FNN_STYLE
+from uncropped_transformers.models.model import (
+    GREY_BOX_HEAD,
+    POSITION_EMBEDDING,
+    POOLING,
+    HEAD,
+    FNN_STYLE,
+)
 
 
 class DataConfig(BaseModel):
@@ -17,7 +26,7 @@ class DataConfig(BaseModel):
     random_lpf_scale: Annotated[float, Field(ge=0)]
     val_prop: Annotated[float, Field(gt=0, lt=1)]
 
-    @field_validator('target_byte', mode='before')
+    @field_validator("target_byte", mode="before")
     @classmethod
     def coerce_target_byte_to_list(cls, v: Any) -> Any:
         if isinstance(v, int):
@@ -39,7 +48,7 @@ class TrainingConfig(BaseModel):
     grad_clip_val: Optional[Annotated[float, Field(gt=0)]] = None
     accumulate_grad_batches: Annotated[int, Field(gt=0)]
     early_stop_metric: str
-    early_stop_mode: Literal['min', 'max']
+    early_stop_mode: Literal["min", "max"]
     seed: int
     compile: StrictBool
     num_workers: Annotated[int, Field(ge=0)]
@@ -70,17 +79,26 @@ class ModelConfig(BaseModel):
     use_bias: StrictBool
     leakage_model: LEAKAGE_MODEL
 
-    @model_validator(mode='after')
-    def validate_cross_fields(self) -> 'ModelConfig':
+    @model_validator(mode="after")
+    def validate_cross_fields(self) -> "ModelConfig":
         if self.use_fourier_embed:
-            assert self.fourier_embed_num_bands is not None, 'fourier_embed_num_bands required when use_fourier_embed=True'
-            assert self.fourier_embed_sigma is not None, 'fourier_embed_sigma required when use_fourier_embed=True'
+            assert self.fourier_embed_num_bands is not None, (
+                "fourier_embed_num_bands required when use_fourier_embed=True"
+            )
+            assert self.fourier_embed_sigma is not None, (
+                "fourier_embed_sigma required when use_fourier_embed=True"
+            )
         else:
-            assert self.fourier_embed_num_bands is None, 'fourier_embed_num_bands must be null when use_fourier_embed=False'
-            assert self.fourier_embed_sigma is None, 'fourier_embed_sigma must be null when use_fourier_embed=False'
+            assert self.fourier_embed_num_bands is None, (
+                "fourier_embed_num_bands must be null when use_fourier_embed=False"
+            )
+            assert self.fourier_embed_sigma is None, (
+                "fourier_embed_sigma must be null when use_fourier_embed=False"
+            )
         if self.head_count is not None:
-            assert self.embedding_dim % self.head_count == 0, \
-                f'embedding_dim ({self.embedding_dim}) must be divisible by head_count ({self.head_count})'
+            assert self.embedding_dim % self.head_count == 0, (
+                f"embedding_dim ({self.embedding_dim}) must be divisible by head_count ({self.head_count})"
+            )
         return self
 
 

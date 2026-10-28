@@ -22,42 +22,45 @@ import torch
 from torch.profiler import ProfilerActivity, profile
 
 from uncropped_transformers.models.model import Model
-from init_things import *
+from init_things import OUTPUTS_ROOT
 
 # ── Fixed benchmark parameters ────────────────────────────────────────────────
-BATCH_SIZE       = 256
-FIXED_INPUT_LEN  = 2**18   # 262 144; patch_size = FIXED_INPUT_LEN // patch_count
-OUTPUT_COUNT     = 16      # number of output variables predicted (as in practice)
-OUTPUT_DIM       = 256
+BATCH_SIZE = 256
+FIXED_INPUT_LEN = 2**18  # 262 144; patch_size = FIXED_INPUT_LEN // patch_count
+OUTPUT_COUNT = 16  # number of output variables predicted (as in practice)
+OUTPUT_DIM = 256
 EXPANSION_FACTOR = 4
-N_WARMUP         = 3
-N_ITERS          = 10
+N_WARMUP = 3
+N_ITERS = 10
 
 # ── Base config ───────────────────────────────────────────────────────────────
-BASE_PATCH_COUNT   = 64
-BASE_LAYER_COUNT   = 8
+BASE_PATCH_COUNT = 64
+BASE_LAYER_COUNT = 8
 BASE_EMBEDDING_DIM = 512
 
 # ── Sweeps (factors of 2 around base) ────────────────────────────────────────
-PATCH_COUNTS   = [8, 16, 32, 64, 128, 256]
-LAYER_COUNTS   = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
+PATCH_COUNTS = [8, 16, 32, 64, 128, 256]
+LAYER_COUNTS = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
 EMBEDDING_DIMS = [128, 256, 384, 512, 640, 768, 896, 1024, 1280, 1536]
 
 
 # ── Model helpers ─────────────────────────────────────────────────────────────
 
+
 def build_model(patch_count: int, layer_count: int, embedding_dim: int) -> Model:
     patch_size = FIXED_INPUT_LEN // patch_count
-    assert patch_size % 2 == 0, f"patch_size={patch_size} must be even (got patch_count={patch_count})"
+    assert patch_size % 2 == 0, (
+        f"patch_size={patch_size} must be even (got patch_count={patch_count})"
+    )
     model = Model(
         input_length=FIXED_INPUT_LEN,
         output_dim=OUTPUT_DIM,
         output_count=OUTPUT_COUNT,
         grey_box_head=None,
-        position_embedding='rope',
-        pooling='token',
-        head='tied',
-        fnn_style='mlp',
+        position_embedding="rope",
+        pooling="token",
+        head="tied",
+        fnn_style="mlp",
         patch_size=patch_size,
         use_fourier_embed=False,
         fourier_embed_num_bands=None,
@@ -75,7 +78,7 @@ def build_model(patch_count: int, layer_count: int, embedding_dim: int) -> Model
 
 
 def make_input(patch_count: int) -> torch.Tensor:
-    return torch.randn(BATCH_SIZE, 1, FIXED_INPUT_LEN, device='cuda')
+    return torch.randn(BATCH_SIZE, 1, FIXED_INPUT_LEN, device="cuda")
 
 
 def count_params(model: Model) -> int:
@@ -90,6 +93,7 @@ def _forward_backward(model: Model, x: torch.Tensor) -> None:
 
 
 # ── Metric measurements ───────────────────────────────────────────────────────
+
 
 def measure_flops(model: Model, x: torch.Tensor) -> int:
     """
@@ -135,46 +139,51 @@ def measure_wall_time_ms(model: Model, x: torch.Tensor) -> float:
 
 # ── Per-config orchestration ──────────────────────────────────────────────────
 
+
 def benchmark_config(patch_count: int, layer_count: int, embedding_dim: int) -> dict:
     patch_size = FIXED_INPUT_LEN // patch_count
     base = {
-        'patch_count':   patch_count,
-        'layer_count':   layer_count,
-        'embedding_dim': embedding_dim,
-        'patch_size':    patch_size,
+        "patch_count": patch_count,
+        "layer_count": layer_count,
+        "embedding_dim": embedding_dim,
+        "patch_size": patch_size,
     }
     try:
         torch.manual_seed(0)
-        model  = build_model(patch_count, layer_count, embedding_dim)
-        x      = make_input(patch_count)
+        model = build_model(patch_count, layer_count, embedding_dim)
+        x = make_input(patch_count)
         params = count_params(model)
-        flops  = measure_flops(model, x)
+        flops = measure_flops(model, x)
         wall_ms = measure_wall_time_ms(model, x)
         vram_mb = measure_vram_mb(model, x)
 
         del model, x
         torch.cuda.empty_cache()
 
-        return {**base,
-                'param_count':  params,
-                'flops':        flops,
-                'wall_time_ms': wall_ms,
-                'vram_mb':      vram_mb,
-                'oom':          False}
+        return {
+            **base,
+            "param_count": params,
+            "flops": flops,
+            "wall_time_ms": wall_ms,
+            "vram_mb": vram_mb,
+            "oom": False,
+        }
 
     except torch.cuda.OutOfMemoryError:
         torch.cuda.empty_cache()
-        return {**base,
-                'param_count':  None,
-                'flops':        None,
-                'wall_time_ms': float('nan'),
-                'vram_mb':      float('nan'),
-                'oom':          True}
+        return {
+            **base,
+            "param_count": None,
+            "flops": None,
+            "wall_time_ms": float("nan"),
+            "vram_mb": float("nan"),
+            "oom": True,
+        }
 
 
 def _fmt(r: dict) -> str:
-    if r['oom']:
-        return 'OOM'
+    if r["oom"]:
+        return "OOM"
     return (
         f"params={r['param_count']:>12,}  "
         f"flops={r['flops']:.3e}  "
@@ -185,58 +194,57 @@ def _fmt(r: dict) -> str:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        '--dest', type=Path, default=None
-    )
+    parser.add_argument("--dest", type=Path, default=None)
     args = parser.parse_args()
 
     output_dir: Optional[Path] = args.dest
     if output_dir is None:
-        output_dir = OUTPUTS_ROOT / 'compute_benchmark'
+        output_dir = OUTPUTS_ROOT / "compute_benchmark"
     assert isinstance(output_dir, Path)
     output_dir.mkdir(exist_ok=True, parents=True)
 
     torch.backends.cudnn.benchmark = True
-    torch.set_float32_matmul_precision('high')
+    torch.set_float32_matmul_precision("high")
 
     results = []
 
     # ── Sweep: patch_count ────────────────────────────────────────────────────
     print(
-        f'=== Sweeping patch_count  '
-        f'(layer_count={BASE_LAYER_COUNT}, embedding_dim={BASE_EMBEDDING_DIM}) ==='
+        f"=== Sweeping patch_count  "
+        f"(layer_count={BASE_LAYER_COUNT}, embedding_dim={BASE_EMBEDDING_DIM}) ==="
     )
     for pc in PATCH_COUNTS:
         ps = FIXED_INPUT_LEN // pc
-        print(f'  patch_count={pc:>4}  patch_size={ps:>6} ... ', end='', flush=True)
+        print(f"  patch_count={pc:>4}  patch_size={ps:>6} ... ", end="", flush=True)
         r = benchmark_config(pc, BASE_LAYER_COUNT, BASE_EMBEDDING_DIM)
-        r['sweep_var'] = 'patch_count'
+        r["sweep_var"] = "patch_count"
         results.append(r)
         print(_fmt(r))
 
     # ── Sweep: layer_count ────────────────────────────────────────────────────
     print(
-        f'\n=== Sweeping layer_count  '
-        f'(patch_count={BASE_PATCH_COUNT}, embedding_dim={BASE_EMBEDDING_DIM}) ==='
+        f"\n=== Sweeping layer_count  "
+        f"(patch_count={BASE_PATCH_COUNT}, embedding_dim={BASE_EMBEDDING_DIM}) ==="
     )
     for lc in LAYER_COUNTS:
-        print(f'  layer_count={lc:>3} ... ', end='', flush=True)
+        print(f"  layer_count={lc:>3} ... ", end="", flush=True)
         r = benchmark_config(BASE_PATCH_COUNT, lc, BASE_EMBEDDING_DIM)
-        r['sweep_var'] = 'layer_count'
+        r["sweep_var"] = "layer_count"
         results.append(r)
         print(_fmt(r))
 
     # ── Sweep: embedding_dim ──────────────────────────────────────────────────
     print(
-        f'\n=== Sweeping embedding_dim  '
-        f'(patch_count={BASE_PATCH_COUNT}, layer_count={BASE_LAYER_COUNT}) ==='
+        f"\n=== Sweeping embedding_dim  "
+        f"(patch_count={BASE_PATCH_COUNT}, layer_count={BASE_LAYER_COUNT}) ==="
     )
     for ed in EMBEDDING_DIMS:
-        print(f'  embedding_dim={ed:>5} ... ', end='', flush=True)
+        print(f"  embedding_dim={ed:>5} ... ", end="", flush=True)
         r = benchmark_config(BASE_PATCH_COUNT, BASE_LAYER_COUNT, ed)
-        r['sweep_var'] = 'embedding_dim'
+        r["sweep_var"] = "embedding_dim"
         results.append(r)
         print(_fmt(r))
 
@@ -245,22 +253,22 @@ def main():
         vals = [r[key] for r in results]
         return np.array(vals, dtype=dtype)
 
-    out_path = output_dir / 'results.npz'
+    out_path = output_dir / "results.npz"
     np.savez(
         out_path,
-        sweep_var   = _arr('sweep_var'),
-        patch_count = _arr('patch_count',   np.int64),
-        layer_count = _arr('layer_count',   np.int64),
-        embedding_dim = _arr('embedding_dim', np.int64),
-        patch_size  = _arr('patch_size',    np.int64),
-        param_count = _arr('param_count',   np.float64),  # float to allow NaN on OOM
-        flops       = _arr('flops',         np.float64),
-        wall_time_ms = _arr('wall_time_ms', np.float64),
-        vram_mb     = _arr('vram_mb',       np.float64),
-        oom         = _arr('oom',           bool),
+        sweep_var=_arr("sweep_var"),
+        patch_count=_arr("patch_count", np.int64),
+        layer_count=_arr("layer_count", np.int64),
+        embedding_dim=_arr("embedding_dim", np.int64),
+        patch_size=_arr("patch_size", np.int64),
+        param_count=_arr("param_count", np.float64),  # float to allow NaN on OOM
+        flops=_arr("flops", np.float64),
+        wall_time_ms=_arr("wall_time_ms", np.float64),
+        vram_mb=_arr("vram_mb", np.float64),
+        oom=_arr("oom", bool),
     )
-    print(f'\nResults saved to {out_path}')
+    print(f"\nResults saved to {out_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
