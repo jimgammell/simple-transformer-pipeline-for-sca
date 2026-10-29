@@ -64,6 +64,7 @@ def compute_snr(
     chunk_size: int = 4096,
     use_progress_bar: bool = False,
     dtype: DTypeLike = np.float32,
+    timestep_chunk_size: int | None = None,
 ) -> dict[str, NDArray[np.floating]]:
     """
     Compute Signal-to-Noise Ratio (SNR) for side-channel analysis.
@@ -71,18 +72,28 @@ def compute_snr(
     Uses Numba JIT compilation for fast iteration over samples.
     Processes each intermediate variable independently to limit peak memory usage.
     """
+    if timestep_chunk_size is not None and timestep_chunk_size <= 0:
+        raise ValueError("timestep_chunk_size must be positive")
     row_count = dataset.trace_count
     col_count = dataset.timestep_count
+    if timestep_chunk_size is None:
+        timestep_chunk_size = col_count
 
     # Probe the first chunk to discover intermediate variable keys and their byte counts
     probe_traces, _, probe_intermediate_values = dataset[0 : min(chunk_size, row_count)]
     int_val_keys = list(probe_intermediate_values.keys())
     int_val_byte_counts = {
-        key: val.shape[1] for key, val in probe_intermediate_values.items()
+        key: np.atleast_2d(val).shape[1]
+        for key, val in probe_intermediate_values.items()
     }
     del probe_traces, probe_intermediate_values
 
-    total_work = 2 * row_count * len(int_val_keys)
+    total_work = (
+        2
+        * row_count
+        * len(int_val_keys)
+        * ((col_count + timestep_chunk_size - 1) // timestep_chunk_size)
+    )
     if use_progress_bar:
         progress_bar = tqdm(total=total_work, desc="Computing SNR")
 
@@ -91,71 +102,87 @@ def compute_snr(
     for int_val_key in int_val_keys:
         byte_count = int_val_byte_counts[int_val_key]
 
-        # Pass 1: Accumulate per-target sums and counts
-        per_target_sums = np.zeros((byte_count, 256, col_count), dtype=dtype)
-        per_target_counts = np.zeros((byte_count, 256), dtype=np.int64)
+        for timestep_start in range(0, col_count, timestep_chunk_size):
+            timestep_end = min(timestep_start + timestep_chunk_size, col_count)
+            block_width = timestep_end - timestep_start
+            # Pass 1: Accumulate per-target sums and counts
+            per_target_sums = np.zeros((byte_count, 256, block_width), dtype=dtype)
+            per_target_counts = np.zeros((byte_count, 256), dtype=np.int64)
 
-        for chunk_start in range(0, row_count, chunk_size):
-            chunk_end = min(chunk_start + chunk_size, row_count)
-            traces, _, intermediate_values = dataset[chunk_start:chunk_end]
-            batch_size = traces.shape[0]
-            traces_float = np.ascontiguousarray(traces.astype(dtype))
-            int_val_u8 = np.ascontiguousarray(
-                intermediate_values[int_val_key].astype(np.uint8)
-            )
-            del traces, intermediate_values
+            for chunk_start in range(0, row_count, chunk_size):
+                chunk_end = min(chunk_start + chunk_size, row_count)
+                traces, _, intermediate_values = dataset[chunk_start:chunk_end]
+                traces = np.atleast_2d(traces)
+                batch_size = traces.shape[0]
+                traces_float = np.ascontiguousarray(
+                    traces[:, timestep_start:timestep_end].astype(dtype)
+                )
+                int_val_u8 = np.ascontiguousarray(
+                    np.atleast_2d(intermediate_values[int_val_key]).astype(np.uint8)
+                )
+                del traces, intermediate_values
 
-            _accumulate_pass1(
-                traces_float, int_val_u8, per_target_sums, per_target_counts
-            )
-            del traces_float, int_val_u8
+                _accumulate_pass1(
+                    traces_float, int_val_u8, per_target_sums, per_target_counts
+                )
+                del traces_float, int_val_u8
 
-            if use_progress_bar:
-                progress_bar.update(batch_size)
+                if use_progress_bar:
+                    progress_bar.update(batch_size)
 
-        # Compute per-target means
-        counts_safe = np.where(per_target_counts > 0, per_target_counts, 1)
-        per_target_means = per_target_sums / counts_safe[..., np.newaxis]
-        del per_target_sums
+            # Compute per-target means
+            counts_safe = np.where(per_target_counts > 0, per_target_counts, 1)
+            per_target_means = per_target_sums / counts_safe[..., np.newaxis]
+            del per_target_sums
 
-        # Pass 2: Accumulate squared deviations for noise variance
-        noise_sum_sq = np.zeros((byte_count, col_count), dtype=dtype)
+            # Pass 2: Accumulate squared deviations for noise variance
+            noise_sum_sq = np.zeros((byte_count, block_width), dtype=dtype)
 
-        for chunk_start in range(0, row_count, chunk_size):
-            chunk_end = min(chunk_start + chunk_size, row_count)
-            traces, _, intermediate_values = dataset[chunk_start:chunk_end]
-            batch_size = traces.shape[0]
-            traces_float = np.ascontiguousarray(traces.astype(dtype))
-            int_val_u8 = np.ascontiguousarray(
-                intermediate_values[int_val_key].astype(np.uint8)
-            )
-            del traces, intermediate_values
+            for chunk_start in range(0, row_count, chunk_size):
+                chunk_end = min(chunk_start + chunk_size, row_count)
+                traces, _, intermediate_values = dataset[chunk_start:chunk_end]
+                traces = np.atleast_2d(traces)
+                batch_size = traces.shape[0]
+                traces_float = np.ascontiguousarray(
+                    traces[:, timestep_start:timestep_end].astype(dtype)
+                )
+                int_val_u8 = np.ascontiguousarray(
+                    np.atleast_2d(intermediate_values[int_val_key]).astype(np.uint8)
+                )
+                del traces, intermediate_values
 
-            _accumulate_pass2(traces_float, int_val_u8, per_target_means, noise_sum_sq)
-            del traces_float, int_val_u8
+                _accumulate_pass2(
+                    traces_float, int_val_u8, per_target_means, noise_sum_sq
+                )
+                del traces_float, int_val_u8
 
-            if use_progress_bar:
-                progress_bar.update(batch_size)
+                if use_progress_bar:
+                    progress_bar.update(batch_size)
 
-        # Compute SNR for this intermediate variable
-        # Weighted variance of per-target means, using counts as weights,
-        # so that unobserved target values (zero-filled) don't bias the result.
-        weights = per_target_counts[..., np.newaxis].astype(
-            dtype
-        )  # (byte_count, 256, 1)
-        total_weights = weights.sum(axis=1, keepdims=True)  # (byte_count, 1, 1)
-        weighted_mean = (weights * per_target_means).sum(
-            axis=1, keepdims=True
-        ) / total_weights  # (byte_count, 1, col_count)
-        signal_var = (weights * (per_target_means - weighted_mean) ** 2).sum(
-            axis=1
-        ) / total_weights.squeeze(1)  # (byte_count, col_count)
-        noise_var = noise_sum_sq / row_count
-        snr_vals[int_val_key] = signal_var / noise_var
-        del per_target_means, per_target_counts, noise_sum_sq
+            # Compute SNR for this intermediate variable
+            # Weighted variance of per-target means, using counts as weights,
+            # so that unobserved target values (zero-filled) don't bias the result.
+            weights = per_target_counts[..., np.newaxis].astype(
+                dtype
+            )  # (byte_count, 256, 1)
+            total_weights = weights.sum(axis=1, keepdims=True)  # (byte_count, 1, 1)
+            weighted_mean = (weights * per_target_means).sum(
+                axis=1, keepdims=True
+            ) / total_weights  # (byte_count, 1, col_count)
+            signal_var = (weights * (per_target_means - weighted_mean) ** 2).sum(
+                axis=1
+            ) / total_weights.squeeze(1)  # (byte_count, col_count)
+            noise_var = noise_sum_sq / row_count
+            with np.errstate(divide="ignore", invalid="ignore"):
+                block_snr = signal_var / noise_var
+            if int_val_key not in snr_vals:
+                snr_vals[int_val_key] = np.empty(
+                    (byte_count, col_count), dtype=block_snr.dtype
+                )
+            snr_vals[int_val_key][:, timestep_start:timestep_end] = block_snr
+            del per_target_means, per_target_counts, noise_sum_sq
 
     if use_progress_bar:
         progress_bar.close()
 
-    assert all(np.isfinite(snr_val).all() for snr_val in snr_vals.values())
     return snr_vals

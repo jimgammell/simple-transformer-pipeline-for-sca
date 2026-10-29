@@ -3,5 +3,9 @@
 output_root=${1:-outputs}
 
 for seed in 0 1 2 3 4; do
-    python experiments/train.py --config-file config/ascadv2.yaml --dest "$output_root/ascadv2/seed=$seed" --training.seed "$seed"
+    dest="$output_root/ascadv2/seed=$seed"
+    python experiments/train.py --config-file config/ascadv2.yaml --dest "$dest" --training.seed "$seed"
+    python experiments/attack.py --model-ckpt-path "$dest/best_val_rank.ckpt"
+    python experiments/attribute.py --ckpt-path "$dest/best_val_rank.ckpt" --attr-methods input-x-gradient
+    python experiments/plot_performance.py --run-dir "$dest"
 done

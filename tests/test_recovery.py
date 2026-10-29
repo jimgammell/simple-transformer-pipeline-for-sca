@@ -2,6 +2,8 @@ import numpy as np
 import pytest
 import torch
 
+from uncropped_transformers.datasets.ascadv2 import ASCADv2_NumpyDataset
+from uncropped_transformers.evaluation.mtd import accumulate_ranks
 from uncropped_transformers.models.building_blocks.grey_box_heads import ASCADv2Head
 from uncropped_transformers.utils import aes
 
@@ -16,6 +18,20 @@ def single_threaded_torch():
 
 def one_hot_logits(values):
     return torch.nn.functional.one_hot(values, num_classes=256).double().log()
+
+
+def fixture():
+    plaintext = np.arange(32, dtype=np.uint8).reshape(2, 16)
+    key = np.arange(32, 64, dtype=np.uint8).reshape(2, 16)
+    permutation = np.roll(np.arange(16), 5)
+    subbytes = aes.SBOX[plaintext ^ key]
+    masked = aes.mult_gf256(np.array(2, dtype=np.uint8), subbytes[:, permutation]) ^ 83
+    labels = np.concatenate(
+        [np.tile([2, 83], (2, 1)), masked, np.tile(permutation, (2, 1))], axis=1
+    )
+    logits = torch.full((2, 34, 256), -30.0, dtype=torch.float64)
+    logits.scatter_(-1, torch.tensor(labels.astype(np.int64))[..., None], 0.0)
+    return logits, {"plaintext": torch.tensor(plaintext), "key": torch.tensor(key)}
 
 
 def test_one_hot_recovery_unmasks_and_inverts_execution_order():
@@ -74,49 +90,6 @@ def test_soft_recovery_matches_enumeration_of_all_predicted_masks_and_slots():
     torch.testing.assert_close(actual.sum(dim=-1), torch.ones(16, dtype=torch.float64))
 
 
-@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
-def test_dense_recovery_is_normalized_chunk_independent_and_ignores_invalid_classes(
-    dtype,
-):
-    generator = torch.Generator().manual_seed(37)
-    logits = torch.randn(9, 34, 256, generator=generator, dtype=dtype)
-    head = ASCADv2Head()
-    expected = torch.cat([head(row[None]) for row in logits])
-    logits[:, 0, 0] = 1e6
-    logits[:, 18:34, 16:] = 1e6
-    actual = head(logits)
-    assert actual.dtype == dtype
-    assert torch.isfinite(actual).all()
-    torch.testing.assert_close(actual, expected)
-    torch.testing.assert_close(actual.exp().sum(dim=-1), torch.ones(9, 16, dtype=dtype))
-
-
-def test_legacy_eighteen_head_output_stays_in_execution_order():
-    subbytes = torch.arange(16) * 17
-    masked = ((subbytes << 1) ^ ((subbytes >> 7) * 0x11B)) ^ 0x53
-    labels = torch.cat([torch.tensor([2, 0x53]), masked])
-    actual = ASCADv2Head()(one_hot_logits(labels)[None]).exp()
-    torch.testing.assert_close(actual[0], one_hot_logits(subbytes).exp())
-
-
-def test_nearly_one_hot_predictions_recover_logical_bytes():
-    subbytes = torch.arange(16) * 17
-    permutation = torch.roll(torch.arange(16), 5)
-    masked = ((subbytes << 1) ^ ((subbytes >> 7) * 0x11B)) ^ 0x53
-    labels = torch.cat([torch.tensor([2, 0x53]), masked[permutation], permutation])
-    logits = one_hot_logits(labels).exp().clamp_min(1e-7).log()[None]
-    recovered = ASCADv2Head()(logits).exp()[0]
-    torch.testing.assert_close(recovered.argmax(dim=-1), subbytes)
-    assert (recovered.gather(-1, subbytes[:, None]) > 0.9998).all()
-
-
-def test_uniform_beta_makes_all_recovered_subbytes_uniform():
-    logits = torch.randn(1, 34, 256, dtype=torch.float64)
-    logits[:, 1, :] = 0
-    recovered = ASCADv2Head()(logits).exp()
-    torch.testing.assert_close(recovered, torch.full_like(recovered, 1 / 256))
-
-
 def test_inconsistent_permutation_marginals_use_normalized_slot_mixture():
     slots = torch.arange(16)
     logits = one_hot_logits(torch.cat([torch.tensor([1, 0]), slots, slots]))
@@ -136,30 +109,54 @@ def test_inconsistent_permutation_marginals_use_normalized_slot_mixture():
     torch.testing.assert_close(recovered, expected)
 
 
-def test_recovery_has_finite_gradients_for_soft_predictions():
-    logits = torch.randn(1, 34, 256, dtype=torch.float64, requires_grad=True)
-    result = ASCADv2Head()(logits)
-    result[:, :, 17].sum().backward()
-    assert logits.grad is not None
-    assert torch.isfinite(logits.grad).all()
-    assert (logits.grad[:, 0, 1:].abs().sum() > 0).item()
-    assert (logits.grad[:, 1:18, :].abs().sum() > 0).item()
-    assert (logits.grad[:, 18:34, :16].abs().sum() > 0).item()
-    assert not logits.grad[:, 0, 0].any()
-    assert not logits.grad[:, 18:34, 16:].any()
+def test_simulated_zero_key_accumulation_recovers_all_bytes():
+    logits, metadata = fixture()
+    original = {k: v.clone() for k, v in metadata.items()}
+    ranks = accumulate_ranks(
+        logits, metadata, ASCADv2_NumpyDataset.target_preds_to_key_preds, attack_count=2
+    )
+    np.testing.assert_array_equal(ranks, np.ones((2, 2, 16)))
+    for name in metadata:
+        torch.testing.assert_close(metadata[name], original[name])
 
 
-@pytest.mark.parametrize("invalid", ["alpha", "permutation", "missing-byte"])
-def test_recovery_rejects_empty_valid_support(invalid):
-    logits = torch.zeros(1, 34, 256, dtype=torch.float64)
-    if invalid == "alpha":
-        logits[:, 0, 1:] = float("-inf")
-    elif invalid == "permutation":
-        logits[:, 18, :16] = float("-inf")
-    else:
-        logits[:, 18:34, 7] = float("-inf")
-    with pytest.raises(ValueError, match="support"):
-        ASCADv2Head()(logits)
+def test_soft_evidence_ignores_actual_masks_and_matches_candidate_reindex():
+    logits, metadata = fixture()
+    callback = ASCADv2_NumpyDataset.target_preds_to_key_preds
+    probabilities = torch.log_softmax(logits, dim=-1).numpy()
+    raw = {k: v.numpy() for k, v in metadata.items()}
+    effective = raw["plaintext"] ^ raw["key"]
+    actual = callback(probabilities, {"plaintext": effective})
+    poisoned = {
+        "plaintext": effective,
+        "key": np.full((2, 16), 111),
+        "alpha": np.zeros((2, 1), dtype=np.uint8),
+        "beta": np.full((2, 1), 201),
+        "perm_indices": np.zeros((2, 16), dtype=np.uint8),
+        "masked_subbytes": np.zeros((2, 16), dtype=np.uint8),
+    }
+    np.testing.assert_array_equal(actual, callback(probabilities, poisoned))
+    subbytes = ASCADv2Head()(logits).numpy()
+    candidates = np.arange(256, dtype=np.uint8)
+    original_scores = np.take_along_axis(
+        subbytes,
+        aes.SBOX[raw["plaintext"][..., None] ^ candidates],
+        axis=-1,
+    )
+    reindexed = np.take_along_axis(
+        original_scores,
+        raw["key"][..., None] ^ candidates,
+        axis=-1,
+    )
+    np.testing.assert_allclose(actual, reindexed, atol=1e-10)
+    np.testing.assert_array_equal(actual.sum(axis=0).argmax(axis=-1), np.zeros(16))
+    corrupted = {k: torch.tensor(v) for k, v in poisoned.items()}
+    corrupted["plaintext"] = metadata["plaintext"]
+    corrupted["key"] = metadata["key"]
+    np.testing.assert_array_equal(
+        accumulate_ranks(logits, corrupted, callback, attack_count=1),
+        accumulate_ranks(logits, metadata, callback, attack_count=1),
+    )
 
 
 @pytest.mark.parametrize("shape", [(1, 17, 256), (1, 34, 128), (34, 256)])

@@ -144,7 +144,9 @@ class SupervisedModule(lightning.LightningModule):
             {
                 **{f"{phase}/acc": FullKeyAccuracy() for phase in get_args(PHASE)},
                 **{
-                    f"{phase}/acc/{idx}": MulticlassAccuracy(num_classes=256)
+                    f"{phase}/acc/{idx}": MulticlassAccuracy(
+                        num_classes=256, average="micro"
+                    )
                     for phase in get_args(PHASE)
                     for idx in range(self.config.num_labels)
                 },

@@ -35,12 +35,17 @@ def test_uniform_shift_independence_reflection_and_gating(module_factory):
     torch.testing.assert_close(module.prepare_batch(batch)[0], trace)
 
 
-def test_gaussian_default_stays_batch_shared(module_factory):
+def test_gaussian_default_stays_batch_shared(module_factory, monkeypatch):
     module = module_factory().train()
     assert module.config.random_roll_distribution == "gaussian"
     module.config.random_roll_scale = 1.0
-    trace = torch.arange(module.trace_mean.numel()).float().repeat(16, 1, 1)
-    labels = torch.zeros(16, 16, dtype=torch.long)
-    np.random.seed(42)
+    module.trace_mean.zero_()
+    module.trace_std.fill_(1)
+    trace = torch.arange(module.trace_mean.numel()).float().repeat(3, 2, 1)
+    labels = torch.zeros(3, 2, dtype=torch.long)
+    monkeypatch.setattr(np.random, "randint", lambda *args: 1)
+    monkeypatch.setattr(np.random, "standard_normal", lambda: 2.5)
     result = module.prepare_batch((trace, labels, {}))[0]
-    assert torch.unique(result, dim=0).shape[0] == 1
+    padded = np.pad(trace.numpy(), ((0, 0), (0, 0), (2, 2)), mode="reflect")
+    torch.testing.assert_close(result, torch.from_numpy(padded[..., :-4]))
+    assert not torch.equal(result, trace)

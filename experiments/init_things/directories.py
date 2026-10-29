@@ -120,8 +120,8 @@ def init_directories(
     for dirkey, dirpath in clargs.items():
         if dirpath is None:
             continue
-        dirkey = dash_to_uscr(dirkey)
-        if dirkey == "eshards_non_shuffled_root":
+        dirkey = dirkey.replace("_", "-")
+        if dirkey == "eshards-non-shuffled-root":
             ESHARDS_NON_SHUFFLED_ROOT = Path(dirpath)
             continue
         if dirkey == "ascadv1-fixed-root":

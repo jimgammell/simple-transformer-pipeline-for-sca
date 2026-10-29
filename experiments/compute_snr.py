@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import get_args
 
 import numpy as np
-from init_things import OUTPUTS_ROOT
+from init_things import directories
 from init_things.directories import append_directory_clargs
 from init_things.mpl_constants import DPI
 from matplotlib import pyplot as plt
@@ -22,15 +22,36 @@ def run_compute_snr(
     chunk_size: int = 1024,
     use_progress_bar: bool = True,
     dtype: DTypeLike = np.float32,
+    overwrite: bool = False,
+    timestep_chunk_size: int | None = None,
 ):
     assert dest.exists()
-    dataset = load_numpy_dataset(dataset_id, partition_id)
+    dataset = load_numpy_dataset(dataset_id, partition_id, target_byte=list(range(16)))
+    if not overwrite:
+        probe_traces, _, intermediate_values = dataset[0:1]
+        expected_files = [
+            dest / f"{key}.{partition_id}.npy" for key in intermediate_values
+        ]
+        del probe_traces, intermediate_values
+        if expected_files and all(path.exists() for path in expected_files):
+            logging.info(
+                f"SNR files for {dataset_id}[{partition_id}] already exist. Skipping computation."
+            )
+            return
+        if any(path.exists() for path in expected_files):
+            logging.warning(
+                "Partial SNR outputs exist. Recomputing all intermediates; existing files will be preserved. Use --overwrite to replace them."
+            )
     snr_vals = compute_snr(
-        dataset, chunk_size=chunk_size, use_progress_bar=use_progress_bar, dtype=dtype
+        dataset,
+        chunk_size=chunk_size,
+        use_progress_bar=use_progress_bar,
+        dtype=dtype,
+        timestep_chunk_size=timestep_chunk_size,
     )
     for int_var_key, int_var_snr in snr_vals.items():
         dest_file = dest / f"{int_var_key}.{partition_id}.npy"
-        if dest_file.exists():
+        if dest_file.exists() and not overwrite:
             logging.warning(
                 f"File {dest_file} already exists, so the new SNR will not be saved."
             )
@@ -53,12 +74,17 @@ def run_visualize_snr(dest: Path, dataset_id: DATASET, partition_id: PARTITION):
         snr_vals[var_name] = snr_val
     var_names.sort()
     var_count = len(var_names)
+    if not var_count:
+        raise ValueError(
+            f"No SNR arrays found for partition {partition_id!r} in {dest}"
+        )
     byte_count = max(snr_val.shape[0] for snr_val in snr_vals.values())
     fig, axes = plt.subplots(
         var_count,
         byte_count,
         sharex=True,
         sharey="row",
+        squeeze=False,
         figsize=(2 * byte_count, 2 * var_count),
     )
     for row_idx, var_name in enumerate(var_names):
@@ -89,7 +115,9 @@ def run_visualize_snr(dest: Path, dataset_id: DATASET, partition_id: PARTITION):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Compute and cache all-byte SNR arrays, or plot saved SNR arrays without loading a dataset."
+    )
     parser.add_argument(
         "--dataset",
         required=True,
@@ -106,7 +134,7 @@ def main():
         "--dest",
         type=Path,
         default=None,
-        help=f"Directory in which to save results (defaults to `{OUTPUTS_ROOT / '<DATASET>'}`)",
+        help="Directory for saved arrays and plots (defaults to <outputs-root>/<dataset>/snr).",
     )
     parser.add_argument(
         "--compute",
@@ -118,10 +146,22 @@ def main():
         "--plot",
         default=False,
         action="store_true",
-        help="Plot the SNR for the specified dataset.",
+        help="Plot saved SNR arrays without loading a dataset; existing plots are replaced.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Recompute and replace existing SNR arrays.",
+    )
+    parser.add_argument(
+        "--timestep-chunk-size",
+        type=int,
+        default=None,
+        help="Timesteps per SNR block (default: full trace); smaller blocks reduce accumulator memory but reread the dataset for each block.",
     )
     append_directory_clargs(parser)
     args = parser.parse_args()
+    directories.init_directories(vars(args), directories.load_directory_config())
 
     dataset_id: DATASET = args.dataset
     partition_id: PARTITION = args.partition
@@ -132,7 +172,8 @@ def main():
     assert dataset_id in get_args(DATASET)
     assert partition_id in get_args(PARTITION)
     if dest is None:
-        dest = OUTPUTS_ROOT / f"{dataset_id}".replace("-", "_") / "snr"
+        assert directories.OUTPUTS_ROOT is not None
+        dest = directories.get_output_dir(dataset_id) / "snr"
     else:
         assert isinstance(dest, Path)
     dest.mkdir(exist_ok=True, parents=True)
@@ -141,7 +182,13 @@ def main():
 
     if compute:
         logging.info(f"Computing SNR of dataset {dataset_id}[{partition_id}]")
-        run_compute_snr(dataset_id, partition_id, dest)
+        run_compute_snr(
+            dataset_id,
+            partition_id,
+            dest,
+            overwrite=args.overwrite,
+            timestep_chunk_size=args.timestep_chunk_size,
+        )
     if plot:
         logging.info(f"Visualizing SNR of dataset {dataset_id}[{partition_id}]")
         run_visualize_snr(dest, dataset_id, partition_id)

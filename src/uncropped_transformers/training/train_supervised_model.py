@@ -5,6 +5,7 @@ from typing import Literal
 import lightning
 import pandas as pd
 import torch
+import yaml
 from lightning import LightningModule, Trainer
 from lightning.fabric.plugins.precision.precision import _PRECISION_INPUT
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -15,6 +16,15 @@ from torch.utils.data import DataLoader
 def _is_training_complete(ckpt_path: Path, total_steps: int) -> bool:
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
     return ckpt.get("global_step", 0) >= total_steps
+
+
+def _write_training_summary(dest: Path, selected_checkpoint: Path) -> None:
+    checkpoint = torch.load(selected_checkpoint, map_location="cpu", weights_only=False)
+    summary = dict(
+        selected_checkpoint=selected_checkpoint.name,
+        selected_global_step=int(checkpoint["global_step"]),
+    )
+    (dest / "training_summary.yaml").write_text(yaml.safe_dump(summary))
 
 
 def train_supervised_model(
@@ -103,3 +113,5 @@ def train_supervised_model(
             merged = pd.concat([old_df, new_df], ignore_index=True)
             merged.to_csv(metrics_csv, index=False)
             metrics_backup.unlink()
+
+    _write_training_summary(dest, dest / f"{best_ckpt_name}.ckpt")
