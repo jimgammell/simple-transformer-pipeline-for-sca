@@ -7,4 +7,5 @@ DATASET = Literal[
     "ascadv1-variable",
     "ascadv2",
     "ches-ctf-2018",
+    "eshards-non-shuffled",
 ]

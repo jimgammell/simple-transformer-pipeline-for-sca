@@ -29,6 +29,7 @@ def load_numpy_dataset(
         "ascadv1-variable",
         "ascadv2",
         "ches-ctf-2018",
+        "eshards-non-shuffled",
     ):
         raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
     root = {
@@ -36,6 +37,7 @@ def load_numpy_dataset(
         "ascadv1-variable": _dirs.ASCADV1_VARIABLE_ROOT,
         "ascadv2": _dirs.ASCADV2_ROOT,
         "ches-ctf-2018": _dirs.CHES_CTF_2018_ROOT,
+        "eshards-non-shuffled": _dirs.ESHARDS_NON_SHUFFLED_ROOT,
     }[dataset_id]
     if root is None:
         raise ValueError(f"Dataset root is not configured for {dataset_id!r}")
@@ -71,6 +73,10 @@ def load_numpy_dataset(
         )
 
         dataset = CHESCTF2018_NumpyDataset(root=root, partition=partition_id, **kwargs)
+    elif dataset_id == "eshards-non-shuffled":
+        from uncropped_transformers.datasets.eshards import EShards_NumpyDataset
+
+        dataset = EShards_NumpyDataset(root=root, partition=partition_id, **kwargs)
 
     else:
         raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
@@ -85,6 +91,7 @@ def load_torch_dataset(
         "ascadv1-variable",
         "ascadv2",
         "ches-ctf-2018",
+        "eshards-non-shuffled",
     ):
         raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")
     root = {
@@ -92,6 +99,7 @@ def load_torch_dataset(
         "ascadv1-variable": _dirs.ASCADV1_VARIABLE_ROOT,
         "ascadv2": _dirs.ASCADV2_ROOT,
         "ches-ctf-2018": _dirs.CHES_CTF_2018_ROOT,
+        "eshards-non-shuffled": _dirs.ESHARDS_NON_SHUFFLED_ROOT,
     }[dataset_id]
     if root is None:
         raise ValueError(f"Dataset root is not configured for {dataset_id!r}")
@@ -127,6 +135,10 @@ def load_torch_dataset(
         )
 
         dataset = CHESCTF2018_TorchDataset(root=root, partition=partition_id, **kwargs)
+    elif dataset_id == "eshards-non-shuffled":
+        from uncropped_transformers.datasets.eshards import EShards_TorchDataset
+
+        dataset = EShards_TorchDataset(root=root, partition=partition_id, **kwargs)
 
     else:
         raise ValueError(f"Unsupported dataset ID: {dataset_id!r}")

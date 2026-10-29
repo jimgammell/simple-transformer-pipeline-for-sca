@@ -2,6 +2,7 @@ ascadv1-fixed-root: ./datasets/ascadv1_fixed/
 ascadv1-variable-root: ./datasets/ascadv1_variable/
 ascadv2-root: ./datasets/ascadv2/
 ches-ctf-2018-root: ./datasets/ches_ctf_2018/
+eshards-non-shuffled-root: ./datasets/eshards/
 
 downloads-cache-root: ./downloads_cache/
 outputs-root: ./outputs/

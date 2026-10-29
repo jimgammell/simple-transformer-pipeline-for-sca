@@ -22,7 +22,7 @@ from .compute_trace_statistics import compute_trace_statistics
 
 TARGET_BYTE = Literal[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 TARGET_VARIABLE = Literal[
-    "key", "plaintext", "alpha", "beta", "subbytes", "masked_subbytes"
+    "key", "plaintext", "alpha", "beta", "subbytes", "masked_subbytes", "perm_indices"
 ]
 G = np.array(
     [
@@ -66,6 +66,8 @@ def repr_target(variable: TARGET_VARIABLE, byte: TARGET_BYTE | None = None) -> s
         rv = k_repr
     elif variable == "plaintext":
         rv = w_repr
+    elif variable == "perm_indices":
+        rv = r"\pi"
     else:
         raise ValueError(f"Unsupported target variable: {variable!r}")
     rv = f"${rv}$"
@@ -189,7 +191,14 @@ class ASCADv2_Config:
         assert self.partition in get_args(PARTITION)
         assert all(x in get_args(TARGET_BYTE) for x in self.target_byte)
         assert all(x in get_args(TARGET_VARIABLE) for x in self.target_variable)
-        self.num_labels = len(self.target_byte) * len(self.target_variable)
+        self.num_labels = sum(
+            1
+            if x in {"alpha", "beta"}
+            else 16
+            if x == "perm_indices"
+            else len(self.target_byte)
+            for x in self.target_variable
+        )
         self.num_classes = 256
 
 
@@ -278,6 +287,16 @@ class ASCADv2_NumpyDataset(Base_NumpyDataset):
         target_preds: NDArray[np.floating],
         intermediate_variables: dict[str, NDArray[np.integer]],
     ) -> NDArray[np.floating]:
+        from uncropped_transformers.models.building_blocks.grey_box_heads import (
+            ASCADv2Head,
+        )
+
+        # Raw callers must supply canonical head order: alpha, beta, 16 masked
+        # subbytes, then 16 permutation indices, with bytes in ascending order.
+        if target_preds.ndim != 3 or target_preds.shape[1:] != (34, 256):
+            raise ValueError("ASCADv2 evaluation requires [batch, 34, 256] predictions")
+        with torch.inference_mode():
+            target_preds = ASCADv2Head()(torch.from_numpy(target_preds)).numpy()
         plaintext = intermediate_variables["plaintext"]
         assert len(target_preds.shape) == len(plaintext.shape) + 1
         assert target_preds.shape[:-1] == plaintext.shape

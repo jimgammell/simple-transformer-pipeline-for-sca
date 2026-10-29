@@ -32,8 +32,26 @@ def run_attack_performance_evalutaion(
     dataset_kwargs = dataset_kwargs or {}
 
     attack_set = load_torch_dataset(dataset_id, "attack", **dataset_kwargs)
+    if dataset_id == "ascadv2":
+        if not np.array_equal(
+            attack_set.config.target_byte, np.arange(16)
+        ) or not np.array_equal(
+            attack_set.config.target_variable,
+            ["alpha", "beta", "masked_subbytes", "perm_indices"],
+        ):
+            raise ValueError(
+                "ASCADv2 evaluation requires canonical 34 heads and all 16 bytes"
+            )
     (attack_loader,) = construct_loaders([], [attack_set])
     module = load_trained_model(ckpt_path, None)
+    if dataset_id == "ascadv2":
+        logging.warning(
+            "ASCADv2 simulated-zero-key benchmark: effective plaintext = plaintext XOR "
+            "actual per-trace key; not a plaintext-only attack"
+        )
+        callback = attack_set.target_preds_to_key_preds
+        module.config.mtd_kwargs["target_preds_to_key_preds"] = callback
+        module.metrics["test/mtd"].target_preds_to_key_preds = callback
     module.to("cuda")
     trainer = Trainer(
         accelerator="gpu", precision="bf16-mixed", default_root_dir=None, logger=False
@@ -135,6 +153,16 @@ def main():
             precision="bf16-mixed",
             attack_order_seeds="0..attack_count-1",
             preprocessing="checkpoint config",
+            **(
+                dict(
+                    evaluation_protocol="ascadv2-simulated-zero-key-soft34-v1",
+                    effective_plaintext="plaintext XOR actual per-trace key",
+                    rank_key="zero for all 16 bytes",
+                    evidence="predicted alpha, beta, masked bytes and permutation only",
+                )
+                if dataset_id == "ascadv2"
+                else {}
+            ),
         ),
     )
     if cache_matches(dest_path, identity, overwrite):

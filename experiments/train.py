@@ -138,6 +138,7 @@ def construct_module(
         mixup_alpha=config.training.mixup_alpha,
         preprocessing=config.data.preprocessing,
         random_roll_scale=config.data.random_roll_scale,
+        random_roll_distribution=config.data.random_roll_distribution,
         random_lpf_scale=config.data.random_lpf_scale,
     )
     if config.training.compile:

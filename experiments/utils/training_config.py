@@ -21,9 +21,10 @@ from uncropped_transformers.training.supervised_lightning_module import (
 class DataConfig(BaseModel):
     id: DATASET
     target_byte: list[int]
-    target_variable: str
+    target_variable: str | list[str]
     preprocessing: PREPROCESSING
     random_roll_scale: Annotated[float, Field(ge=0)]
+    random_roll_distribution: Literal["gaussian", "uniform"] = "gaussian"
     random_lpf_scale: Annotated[float, Field(ge=0)]
     val_prop: Annotated[float, Field(gt=0, lt=1)]
 

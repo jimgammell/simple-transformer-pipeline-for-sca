@@ -71,7 +71,13 @@ def accumulate_ranks(
     total_trace_count, byte_count, class_count = logits.shape
     assert all(total_trace_count == x.shape[0] for x in int_vars.values())
     # Only require 'key' to match byte_count; other vars (e.g. r_in, r_out) may have fewer bytes
-    assert int_vars["key"].shape == (total_trace_count, byte_count)
+    from uncropped_transformers.datasets.ascadv2 import ASCADv2_NumpyDataset
+
+    simulated_zero_key = (
+        target_preds_to_key_preds is ASCADv2_NumpyDataset.target_preds_to_key_preds
+    )
+    if not simulated_zero_key:
+        assert int_vars["key"].shape == (total_trace_count, byte_count)
     if isinstance(logits, torch.Tensor):
         log_target_probs = torch.log_softmax(logits.double(), dim=-1).cpu().numpy()
     elif isinstance(logits, np.ndarray):
@@ -93,7 +99,19 @@ def accumulate_ranks(
         raise ValueError(
             f"Expected uniformly Tensor or ndarray intermediate variables, got: { {k: type(v) for k, v in int_vars.items()}!r}"
         )
+    if simulated_zero_key:
+        if numpy_int_vars["key"].shape != (total_trace_count, 16) or numpy_int_vars[
+            "plaintext"
+        ].shape != (total_trace_count, 16):
+            raise ValueError(
+                "ASCADv2 simulation requires all 16 plaintext and key bytes"
+            )
+        numpy_int_vars = {
+            "plaintext": numpy_int_vars["plaintext"] ^ numpy_int_vars["key"],
+            "key": np.zeros_like(numpy_int_vars["key"]),
+        }
     log_key_probs = target_preds_to_key_preds(log_target_probs, numpy_int_vars)
+    assert log_key_probs.shape == (*numpy_int_vars["key"].shape, class_count)
     if traces_per_attack is None:
         traces_per_attack = logits.shape[0]
     elif traces_per_attack > logits.shape[0]:

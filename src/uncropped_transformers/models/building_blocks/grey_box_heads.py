@@ -37,9 +37,53 @@ class ASCADv2Head(nn.Module):
         self.soft_gf256inv = SoftGF256Inv()
 
     def forward(self, logits: torch.Tensor) -> torch.Tensor:
-        batch_size, label_count, class_count = logits.shape
-        assert label_count == 18
-        assert class_count == 256
+        if (
+            logits.ndim != 3
+            or logits.shape[1] not in (18, 34)
+            or logits.shape[2] != 256
+        ):
+            raise ValueError(
+                f"Expected [batch, 18 or 34, 256] logits, got {logits.shape}"
+            )
+        if logits.shape[1] == 34:
+            recovered = []
+            for chunk in logits.split(8):
+                alpha_logits = chunk[:, 0:1, 1:]
+                permutation_logits = chunk[:, 18:34, :16]
+                if not torch.isfinite(torch.logsumexp(alpha_logits, dim=-1)).all():
+                    raise ValueError("ASCADv2 alpha must have nonzero support")
+                if not torch.isfinite(
+                    torch.logsumexp(permutation_logits, dim=-1)
+                ).all():
+                    raise ValueError(
+                        "ASCADv2 permutation indices must have support in 0..15"
+                    )
+                alpha_logits = torch.cat(
+                    [torch.full_like(chunk[:, 0:1, :1], float("-inf")), alpha_logits],
+                    dim=-1,
+                )
+                slot_logits = self._unmask(
+                    torch.cat([alpha_logits, chunk[:, 1:18, :]], dim=1)
+                )
+                permutation_log_probs = torch.log_softmax(permutation_logits, dim=-1)
+                if not torch.isfinite(
+                    torch.logsumexp(permutation_log_probs, dim=1)
+                ).all():
+                    raise ValueError(
+                        "Each ASCADv2 byte must have predicted permutation support"
+                    )
+                slot_log_weights = torch.log_softmax(permutation_log_probs, dim=1)
+                recovered.append(
+                    torch.logsumexp(
+                        slot_log_weights.transpose(1, 2).unsqueeze(-1)
+                        + slot_logits.unsqueeze(1),
+                        dim=2,
+                    )
+                )
+            return torch.cat(recovered, dim=0)
+        return self._unmask(logits)
+
+    def _unmask(self, logits: torch.Tensor) -> torch.Tensor:
         alpha_logits = logits[:, 0:1, :]
         beta_logits = logits[:, 1:2, :]
         masked_sbox_logits = logits[:, 2:18, :]

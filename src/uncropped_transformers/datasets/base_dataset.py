@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from .ascadv1 import ASCADv1_Config
     from .ascadv2 import ASCADv2_Config
     from .ches_ctf_2018 import CHESCTF2018_Config
+    from .eshards import EShards_Config
 
 import h5py
 import numpy as np
@@ -58,7 +59,7 @@ class Base_NumpyDataset(ABC):
 class Base_TorchDataset(ABC, Dataset):
     timestep_count: int
     int_var_keys: tuple[str, ...]
-    config: "ASCADv1_Config | ASCADv2_Config | CHESCTF2018_Config"
+    config: "ASCADv1_Config | ASCADv2_Config | CHESCTF2018_Config | EShards_Config"
 
     if TYPE_CHECKING:
 

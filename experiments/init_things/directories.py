@@ -45,6 +45,7 @@ ASCADV1_FIXED_ROOT: Path | None = None
 ASCADV1_VARIABLE_ROOT: Path | None = None
 ASCADV2_ROOT: Path | None = None
 CHES_CTF_2018_ROOT: Path | None = None
+ESHARDS_NON_SHUFFLED_ROOT: Path | None = None
 
 DOWNLOADS_CACHE_ROOT: Path | None = None
 OUTPUTS_ROOT: Path | None = None
@@ -56,6 +57,7 @@ def append_directory_clargs(p: argparse.ArgumentParser):
         ("ascadv1-variable-root", "Root directory for ASCADv1-variable"),
         ("ascadv2-root", "Root directory for ASCADv2"),
         ("ches-ctf-2018-root", "Root directory for CHES-CTF-2018"),
+        ("eshards-non-shuffled-root", "Root directory for eShard non-shuffled"),
         ("downloads-cache-root", "Root directory for caching downloaded files"),
         ("outputs-root", "Root directory for experiment outputs"),
     ):
@@ -80,6 +82,7 @@ def init_directories(
         ASCADV1_VARIABLE_ROOT, \
         ASCADV2_ROOT, \
         CHES_CTF_2018_ROOT, \
+        ESHARDS_NON_SHUFFLED_ROOT, \
         DOWNLOADS_CACHE_ROOT, \
         OUTPUTS_ROOT
     assert (clargs is not None) or (config is not None)
@@ -100,6 +103,9 @@ def init_directories(
         elif dirkey == "ches-ctf-2018-root":
             CHES_CTF_2018_ROOT = Path(dirpath)
             CHES_CTF_2018_ROOT.mkdir(exist_ok=True)
+        elif dirkey == "eshards-non-shuffled-root":
+            ESHARDS_NON_SHUFFLED_ROOT = Path(dirpath)
+            ESHARDS_NON_SHUFFLED_ROOT.mkdir(exist_ok=True)
 
         elif dirkey == "downloads-cache-root":
             DOWNLOADS_CACHE_ROOT = Path(dirpath)
@@ -115,6 +121,9 @@ def init_directories(
         if dirpath is None:
             continue
         dirkey = dash_to_uscr(dirkey)
+        if dirkey == "eshards_non_shuffled_root":
+            ESHARDS_NON_SHUFFLED_ROOT = Path(dirpath)
+            continue
         if dirkey == "ascadv1-fixed-root":
             ASCADV1_FIXED_ROOT = Path(dirpath)
         elif dirkey == "ascadv1-variable-root":
