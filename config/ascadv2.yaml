@@ -30,10 +30,10 @@ mtd:
   traces_per_attack: 1000
 search_space: {}
 training:
-  accumulate_grad_batches: 1
+  accumulate_grad_batches: 4
   additive_gaussian_noise: 0.0
   base_lr: 0.0009
-  batch_size: 512
+  batch_size: 128
   compile: false
   precision: bf16-mixed
   early_stop_metric: val/rank

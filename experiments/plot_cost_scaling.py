@@ -7,10 +7,11 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 
-def run_plot_cost_scaling(dest: Path):
+def run_plot_cost_scaling(dest: Path, benchmark_path: Path | None = None):
     fig, axes = plt.subplots(1, 4, figsize=(WIDTH, WIDTH / 4))
-    benchmark_path = OUTPUTS_ROOT / "compute_benchmark" / "results.npz"
-    benchmark = np.load(benchmark_path, allow_pickle=True)
+    if benchmark_path is None:
+        benchmark_path = OUTPUTS_ROOT / "compute_benchmark" / "results.npz"
+    benchmark = np.load(benchmark_path, allow_pickle=False)
 
     sweep_var = benchmark["sweep_var"]
     param_count = benchmark["param_count"]
@@ -82,6 +83,12 @@ def main():
         type=Path,
         help="Output directory for cost_scaling.pdf (default: OUTPUTS_ROOT/plots_for_paper).",
     )
+    parser.add_argument(
+        "--benchmark-path",
+        type=Path,
+        default=None,
+        help="Saved results.npz (default: OUTPUTS_ROOT/compute_benchmark/results.npz).",
+    )
     args = parser.parse_args()
 
     dest = args.dest
@@ -89,7 +96,7 @@ def main():
         dest = OUTPUTS_ROOT / "plots_for_paper"
     dest.mkdir(exist_ok=True, parents=True)
 
-    run_plot_cost_scaling(dest / "cost_scaling.pdf")
+    run_plot_cost_scaling(dest / "cost_scaling.pdf", args.benchmark_path)
 
 
 if __name__ == "__main__":

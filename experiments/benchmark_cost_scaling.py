@@ -18,8 +18,9 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from lightning.fabric import Fabric
+from lightning.fabric.utilities.throughput import measure_flops as lightning_measure_flops
 from init_things import OUTPUTS_ROOT
-from torch.profiler import ProfilerActivity, profile
 
 from uncropped_transformers.models.model import Model
 
@@ -73,64 +74,61 @@ def build_model(patch_count: int, layer_count: int, embedding_dim: int) -> Model
         hidden_dropout_rate=0.0,
         use_bias=False,
     )
-    return model.cuda().train()
+    return model.train()
 
 
 def make_input(patch_count: int) -> torch.Tensor:
-    return torch.randn(BATCH_SIZE, 1, FIXED_INPUT_LEN, device="cuda")
+    return torch.randn(BATCH_SIZE, 1, FIXED_INPUT_LEN)
 
 
-def count_params(model: Model) -> int:
+def count_params(model: torch.nn.Module) -> int:
     return sum(p.numel() for p in model.parameters())
 
 
-def _forward_backward(model: Model, x: torch.Tensor) -> None:
+def _forward_backward(model: torch.nn.Module, x: torch.Tensor, fabric: Fabric) -> torch.Tensor:
     out = model(x)
     loss = out.sum()
-    loss.backward()
+    fabric.backward(loss)
     model.zero_grad(set_to_none=True)
+    return loss
 
 
 # ── Metric measurements ───────────────────────────────────────────────────────
 
 
-def measure_flops(model: Model, x: torch.Tensor) -> int:
+def measure_flops(model: torch.nn.Module, x: torch.Tensor, fabric: Fabric) -> int:
+    """Forward/backward matrix and convolution FLOPs; multiply-add = 2.
+
+    Registered fused-attention backward formulas include recomputation.
+    Softmax, normalization, activation, elementwise, RNG and optimizer work
+    are excluded. Count eager execution separately from compiled timing.
     """
-    FLOPs for one forward + backward pass, captured via torch.profiler.
-
-    torch.profiler with_flops=True counts flops for supported operators
-    (primarily matrix multiplications and convolutions) in both forward and
-    backward kernels. The count may be an underestimate for unsupported ops.
-    """
-    with profile(
-        activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA],
-        with_flops=True,
-    ) as prof:
-        _forward_backward(model, x)
-    torch.cuda.synchronize()
-    return sum(e.flops for e in prof.key_averages())
+    flops = lightning_measure_flops(model, lambda: _forward_backward(model, x, fabric))
+    if flops <= 0:
+        raise RuntimeError("FLOP coverage is empty")
+    return int(flops)
 
 
-def measure_vram_mb(model: Model, x: torch.Tensor) -> float:
+def measure_vram_mb(model: torch.nn.Module, x: torch.Tensor, fabric: Fabric) -> float:
     """Peak VRAM (MB) over one forward + backward pass."""
     torch.cuda.empty_cache()
     torch.cuda.reset_peak_memory_stats()
-    _forward_backward(model, x)
+    _forward_backward(model, x, fabric)
     torch.cuda.synchronize()
     return torch.cuda.max_memory_allocated() / 1024**2
 
 
-def measure_wall_time_ms(model: Model, x: torch.Tensor) -> float:
+def measure_wall_time_ms(model: torch.nn.Module, x: torch.Tensor, fabric: Fabric) -> float:
     """Median wall-clock time (ms) per forward + backward pass over N_ITERS."""
     for _ in range(N_WARMUP):
-        _forward_backward(model, x)
+        _forward_backward(model, x, fabric)
         torch.cuda.synchronize()
 
     times = []
     for _ in range(N_ITERS):
         torch.cuda.synchronize()
         t0 = time.perf_counter()
-        _forward_backward(model, x)
+        _forward_backward(model, x, fabric)
         torch.cuda.synchronize()
         times.append(time.perf_counter() - t0)
     return float(np.median(times) * 1000)
@@ -139,7 +137,7 @@ def measure_wall_time_ms(model: Model, x: torch.Tensor) -> float:
 # ── Per-config orchestration ──────────────────────────────────────────────────
 
 
-def benchmark_config(patch_count: int, layer_count: int, embedding_dim: int) -> dict:
+def benchmark_config(patch_count: int, layer_count: int, embedding_dim: int, compile_model: bool = True) -> dict:
     patch_size = FIXED_INPUT_LEN // patch_count
     base = {
         "patch_count": patch_count,
@@ -149,14 +147,18 @@ def benchmark_config(patch_count: int, layer_count: int, embedding_dim: int) -> 
     }
     try:
         torch.manual_seed(0)
-        model = build_model(patch_count, layer_count, embedding_dim)
-        x = make_input(patch_count)
+        fabric = Fabric(accelerator="cuda", devices=1, precision="bf16-mixed")
+        eager_model = build_model(patch_count, layer_count, embedding_dim)
+        model = fabric.setup_module(eager_model)
+        x = fabric.to_device(make_input(patch_count))
         params = count_params(model)
-        flops = measure_flops(model, x)
-        wall_ms = measure_wall_time_ms(model, x)
-        vram_mb = measure_vram_mb(model, x)
+        flops = measure_flops(model, x, fabric)
+        if compile_model:
+            eager_model.compile()
+        wall_ms = measure_wall_time_ms(model, x, fabric)
+        vram_mb = measure_vram_mb(model, x, fabric)
 
-        del model, x
+        del model, eager_model, x
         torch.cuda.empty_cache()
 
         return {
@@ -197,6 +199,7 @@ def _fmt(r: dict) -> str:
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dest", type=Path, default=None)
+    parser.add_argument("--compile", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
 
     output_dir: Path | None = args.dest
@@ -218,7 +221,7 @@ def main():
     for pc in PATCH_COUNTS:
         ps = FIXED_INPUT_LEN // pc
         print(f"  patch_count={pc:>4}  patch_size={ps:>6} ... ", end="", flush=True)
-        r = benchmark_config(pc, BASE_LAYER_COUNT, BASE_EMBEDDING_DIM)
+        r = benchmark_config(pc, BASE_LAYER_COUNT, BASE_EMBEDDING_DIM, args.compile)
         r["sweep_var"] = "patch_count"
         results.append(r)
         print(_fmt(r))
@@ -230,7 +233,7 @@ def main():
     )
     for lc in LAYER_COUNTS:
         print(f"  layer_count={lc:>3} ... ", end="", flush=True)
-        r = benchmark_config(BASE_PATCH_COUNT, lc, BASE_EMBEDDING_DIM)
+        r = benchmark_config(BASE_PATCH_COUNT, lc, BASE_EMBEDDING_DIM, args.compile)
         r["sweep_var"] = "layer_count"
         results.append(r)
         print(_fmt(r))
@@ -242,7 +245,7 @@ def main():
     )
     for ed in EMBEDDING_DIMS:
         print(f"  embedding_dim={ed:>5} ... ", end="", flush=True)
-        r = benchmark_config(BASE_PATCH_COUNT, BASE_LAYER_COUNT, ed)
+        r = benchmark_config(BASE_PATCH_COUNT, BASE_LAYER_COUNT, ed, args.compile)
         r["sweep_var"] = "embedding_dim"
         results.append(r)
         print(_fmt(r))
@@ -255,6 +258,9 @@ def main():
     out_path = output_dir / "results.npz"
     np.savez(
         out_path,
+        compile=np.array(args.compile),
+        precision=np.array("bf16-mixed"),
+        flop_convention=np.array("matrix/convolution forward+backward; multiply-add=2; excludes elementwise and optimizer; eager accounting, warmed execution timing"),
         sweep_var=_arr("sweep_var"),
         patch_count=_arr("patch_count", np.int64),
         layer_count=_arr("layer_count", np.int64),

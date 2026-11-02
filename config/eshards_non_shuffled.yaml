@@ -51,7 +51,7 @@ training:
   additive_gaussian_noise: 0.0
   base_lr: 0.0004972028220312957
   batch_size: 256
-  compile: false
+  compile: true
   early_stop_metric: val/rank
   early_stop_mode: min
   grad_clip_val: 1.0
