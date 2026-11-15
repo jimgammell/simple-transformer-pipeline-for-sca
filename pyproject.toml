@@ -26,13 +26,11 @@ dependencies = [
     "estraces",
 ]
 requires-python = ">=3.11"
-authors = [
-    {name = "Jim Gammell", email = "jim@jimgammell.com"}
-]
+authors = [{name = "Anonymous authors"}]
 description = "Repository for training, hyperparameter tuning, and evaluation of transformers for full-key physical side-channel attacks on uncropped power/EM traces."
 readme = "README.md"
 license = "MIT"
-license-files = ["LICENSE", "CITATION.cff"]
+license-files = ["LICENSE"]
 
 [project.optional-dependencies]
 development = [
