@@ -164,7 +164,7 @@ cython_debug/
 /datasets/
 !/src/**/datasets/
 downloads_cache
-outputs
+outputs*
 .claude
 .vscode
 analysis_scripts

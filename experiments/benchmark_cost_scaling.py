@@ -25,7 +25,7 @@ from init_things import OUTPUTS_ROOT
 from uncropped_transformers.models.model import Model
 
 # ── Fixed benchmark parameters ────────────────────────────────────────────────
-BATCH_SIZE = 256
+BATCH_SIZE = 64
 FIXED_INPUT_LEN = 2**18  # 262 144; patch_size = FIXED_INPUT_LEN // patch_count
 OUTPUT_COUNT = 16  # number of output variables predicted (as in practice)
 OUTPUT_DIM = 256
@@ -39,7 +39,7 @@ BASE_LAYER_COUNT = 8
 BASE_EMBEDDING_DIM = 512
 
 # ── Sweeps (factors of 2 around base) ────────────────────────────────────────
-PATCH_COUNTS = [8, 16, 32, 64, 128, 256]
+PATCH_COUNTS = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096]
 LAYER_COUNTS = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31]
 EMBEDDING_DIMS = [128, 256, 384, 512, 640, 768, 896, 1024, 1280, 1536]
 
@@ -154,6 +154,7 @@ def benchmark_config(patch_count: int, layer_count: int, embedding_dim: int, com
         params = count_params(model)
         flops = measure_flops(model, x, fabric)
         if compile_model:
+            torch.compiler.reset()
             eager_model.compile()
         wall_ms = measure_wall_time_ms(model, x, fabric)
         vram_mb = measure_vram_mb(model, x, fabric)

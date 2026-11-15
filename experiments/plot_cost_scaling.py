@@ -1,10 +1,12 @@
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
 from init_things import DPI, OUTPUTS_ROOT, WIDTH
 from matplotlib import pyplot as plt
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, MaxNLocator
+from utils.artifacts import sha256_file
 
 
 def run_plot_cost_scaling(dest: Path, benchmark_path: Path | None = None):
@@ -73,6 +75,70 @@ def run_plot_cost_scaling(dest: Path, benchmark_path: Path | None = None):
     plt.close(fig)
 
 
+def plot_patch_tradeoff(dest, benchmark_path):
+    """Single-column saved-artifact plot, normalized to the 64-patch recipe."""
+    provenance_path = benchmark_path.with_name("provenance.json")
+    provenance = json.loads(provenance_path.read_text()) if provenance_path.exists() else None
+    with np.load(benchmark_path, allow_pickle=False) as benchmark:
+        settings = {key: benchmark[key].tolist() for key in ("compile", "precision", "flop_convention")
+                    if key in benchmark}
+        mask = benchmark["sweep_var"] == "patch_count"
+        x = benchmark["patch_count"][mask]
+        order = np.argsort(x)
+        x = x[order]
+        if len(x) != len(np.unique(x)) or np.count_nonzero(x == 64) != 1:
+            raise ValueError("Expected unique patch counts including the 64-patch reference")
+        if np.any(benchmark["oom"][mask]):
+            raise ValueError("Patch sweep contains OOM results")
+        for key in ("layer_count", "embedding_dim"):
+            if len(np.unique(benchmark[key][mask])) != 1:
+                raise ValueError(f"Patch sweep changes {key}")
+        reference = int(np.flatnonzero(x == 64)[0])
+        metrics = {}
+        for key, label in (("param_count", "Parameters"), ("wall_time_ms", "Time"), ("vram_mb", "Memory"), ("flops", "FLOPs")):
+            values = benchmark[key][mask][order].astype(float)
+            if not np.all(np.isfinite(values) & (values > 0)):
+                raise ValueError(f"Invalid {key}")
+            metrics[label] = dict(field=key, values=values.tolist(),
+                                  reference=float(values[reference]), normalized=(values / values[reference]).tolist())
+    with plt.rc_context({"font.size": 10, "axes.labelsize": 10, "xtick.labelsize": 8,
+                         "ytick.labelsize": 8, "legend.fontsize": 8}):
+        fig, ax = plt.subplots(figsize=(3.5, 2.0))
+        for (label, metric), color, marker in zip(metrics.items(),
+                ("#0072B2", "#D55E00", "#009E73", "#CC79A7"), ("o", "s", "^", "D"), strict=True):
+            base = metric["reference"]
+            legend_label = {
+                "Parameters": f"Parameters\n(base = {base / 1e6:.1f}M)",
+                "Time": f"Time (fwd+bkwd)\n(base = {base:.0f} ms)",
+                "Memory": f"VRAM\n(base = {base * 2**20 / 10**9:.2f} GB)",
+                "FLOPs": f"FLOPs (fwd+bkwd)\n(base = {base / 1e12:.2f}T)",
+            }[label]
+            ax.plot(x, metric["normalized"], label=legend_label, color=color,
+                    marker=marker, markersize=4, linewidth=1.3)
+
+        ymax = max(max(metric["normalized"]) for metric in metrics.values())
+        ax.set(xlabel="Patch count", ylabel=r"Cost ($\times$ base)",
+               xlim=(0, float(x.max()) * 1.03), ylim=(0, ymax * 1.08))
+        ax.set_xticks(np.linspace(0, x.max(), 5))
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=4, integer=True))
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}×"))
+        ax.grid(False)
+        ax.legend(frameon=False, loc="upper left", ncol=2, labelspacing=0.2,
+                  borderaxespad=0.15, borderpad=0.2, handlelength=1.0,
+                  handletextpad=0.5, columnspacing=0.8)
+        fig.tight_layout(pad=0.5)
+        fig.savefig(dest / "patch-cost-tradeoff.pdf")
+        fig.savefig(dest / "patch-cost-tradeoff.png", dpi=200)
+        plt.close(fig)
+    (dest / "patch-cost-tradeoff.json").write_text(json.dumps(dict(
+        source=str(benchmark_path.resolve()), source_sha256=sha256_file(benchmark_path),
+        patch_count=x.tolist(), metrics=metrics,
+        benchmark_settings=settings, benchmark_provenance=provenance,
+        provenance_sha256=sha256_file(provenance_path) if provenance_path.exists() else None,
+        scope="Synthetic forward/backward, not optimizer-inclusive training; memory is peak PyTorch allocated MiB, not reserved. Each curve is normalized to its saved 64-patch value. Execution settings are recorded in benchmark_settings and benchmark_provenance when available.",
+    ), indent=2) + "\n")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Plot saved compute_benchmark/results.npz; no benchmark is run."
@@ -89,6 +155,7 @@ def main():
         default=None,
         help="Saved results.npz (default: OUTPUTS_ROOT/compute_benchmark/results.npz).",
     )
+    parser.add_argument("--patch-tradeoff", action="store_true", help="Single-column normalized patch-count plot")
     args = parser.parse_args()
 
     dest = args.dest
@@ -96,7 +163,12 @@ def main():
         dest = OUTPUTS_ROOT / "plots_for_paper"
     dest.mkdir(exist_ok=True, parents=True)
 
-    run_plot_cost_scaling(dest / "cost_scaling.pdf", args.benchmark_path)
+    if args.patch_tradeoff:
+        if args.benchmark_path is None:
+            parser.error("--patch-tradeoff requires --benchmark-path")
+        plot_patch_tradeoff(dest, args.benchmark_path)
+    else:
+        run_plot_cost_scaling(dest / "cost_scaling.pdf", args.benchmark_path)
 
 
 if __name__ == "__main__":

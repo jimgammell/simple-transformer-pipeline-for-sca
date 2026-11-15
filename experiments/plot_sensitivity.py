@@ -15,7 +15,7 @@ from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.ticker import FuncFormatter, NullFormatter
 
-from plot_results import load_attack, seed_runs
+from utils.artifacts import load_attack, seed_runs
 
 
 DATASETS = ("ascadv1-fixed", "ascadv1-variable", "ches-ctf-2018", "eshards-non-shuffled")
@@ -35,7 +35,7 @@ def attack_row(run, dataset, parameter, value, kind):
     orders, horizon, _ = ranks.shape
     if horizon != config["mtd"]["traces_per_attack"] or orders != config["mtd"]["attack_count"]:
         raise ValueError(f"{run}: attack shape does not match configured horizon/orders")
-    # Same sustained-MTD rule as plot_results.mtd_table: last error plus one.
+    # Sustained disclosure time: last error plus one.
     times = np.where(ranks > 1, np.arange(1, horizon + 1)[None, :, None], 0).max(axis=1) + 1
     return dict(dataset=dataset, parameter=parameter, value=value, kind=kind,
                 seed=config["training"]["seed"], status="complete",

@@ -42,7 +42,7 @@ def run_attack_performance_evalutaion(
             raise ValueError(
                 "ASCADv2 evaluation requires canonical 34 heads and all 16 bytes"
             )
-    (attack_loader,) = construct_loaders([], [attack_set])
+    (attack_loader,) = construct_loaders([], [attack_set], num_workers=0)
     module = load_trained_model(ckpt_path, None)
     if dataset_id == "ascadv2":
         logging.warning(

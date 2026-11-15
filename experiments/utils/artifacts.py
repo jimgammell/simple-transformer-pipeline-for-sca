@@ -69,6 +69,30 @@ def cache_matches(path, identity, overwrite=False):
     )
 
 
+def seed_runs(root):
+    """Find the complete five-seed reporting cohort."""
+    runs = sorted(Path(root).glob("seed=*"))
+    if {run.name for run in runs} != {f"seed={seed}" for seed in range(5)}:
+        raise ValueError(f"{root}: expected exactly seed=0 through seed=4")
+    return runs
+
+
+def load_attack(run):
+    """Load saved key ranks in the one-based convention used by sensitivity plots."""
+    with np.load(Path(run) / "attack_metrics.npz", allow_pickle=False) as saved:
+        ranks = saved["ranks_zero_based"]
+    if (
+        ranks.ndim != 3
+        or not all(ranks.shape)
+        or ranks.shape[2] != 16
+        or not np.issubdtype(ranks.dtype, np.integer)
+        or np.any(ranks < 0)
+        or np.any(ranks > 255)
+    ):
+        raise ValueError(f"{run}: expected integer zero-based ranks [A,T,16] in 0..255")
+    return ranks.astype(np.int16) + 1
+
+
 def summarize_ranks(ranks):
     ranks = np.asarray(ranks)
     if (
